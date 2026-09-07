@@ -157,6 +157,10 @@ input,textarea,select{font:inherit;color:inherit}
 .chipf .x{width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px;opacity:.7}
 .chipf .x:hover{background:#fff;opacity:1}
 .chips .none{font-size:12.5px;color:var(--ink4)}
+.chips .allf{display:inline-flex;align-items:center;gap:6px;background:#fff;color:var(--ink2);border:1px dashed var(--ink4);border-radius:99px;padding:3px 11px;font-size:12.5px;font-weight:600;line-height:20px;transition:border-color .12s,color .12s,background .12s}
+.chips .allf:hover{background:var(--blue-l);border-color:var(--blue);border-style:solid;color:var(--blue)}
+.chips .allf .sl{font-size:13px;line-height:1}
+.chips .allf .n{background:var(--blue);color:#fff;border-radius:99px;font-size:11px;font-weight:700;padding:0 6px;line-height:16px}
 .chips .tpl{margin-left:auto;font-size:12.5px;color:var(--blue)}
 .chips .tpl:hover{text-decoration:underline}
 .parsed{margin-top:10px;background:var(--purple-bg);border:1px solid #DFE1FA;border-radius:10px;padding:9px 12px;font-size:12.5px;color:var(--ink2);display:flex;gap:10px;align-items:flex-start}
@@ -972,7 +976,7 @@ function viewResults(){
     <div class="qline">
       <div class="abar"><span class="av">✦</span><input id="aTop" placeholder="${S.checked.length?'Спросите по документации выбранных: «какой срок поставки?», «есть ли аванс?»':'Уточнить словами или спросить помощника: «только 44-ФЗ», «поставка в Казань», «убери аванс»…'}" onkeydown="if(event.key==='Enter'){event.preventDefault();sendTop()}">${micBtn('aTop')}<button class="sendb" onclick="sendTop()" title="Отправить помощнику">↑</button></div>
     </div>
-    <div class="chips">${subjectChip()}${chips}${!S.fpanel&&!names.length?'<button class="tpl" style="margin-left:0" onclick="S.fpanel=true;render()">Показать условия</button>':''}
+    <div class="chips">${subjectChip()}${chips}${S.fpanel?'':`<button class="allf" onclick="S.fpanel=true;render()" title="Открыть панель со всеми условиями"><span class="sl">☰</span>Все фильтры${names.length?`<span class="n">${names.length}</span>`:''}</button>`}
       <span class="cnt num" style="margin-left:auto;font-size:15px">${fmt(all.length)}<small>${plural(all.length,'процедура','процедуры','процедур')}</small></span>
       ${names.length?`<button class="tpl" style="margin-left:6px" onclick="openTplModal()">Сохранить как шаблон</button>`:''}</div>
   </div>`;
@@ -1411,7 +1415,7 @@ function livePreview(v){
 const TOUR=[
   {screen:'start', sel:'#qIn', title:'С чего начать', text:'Напишите, что поставляете. Можно сразу с условиями: «спецодежда, 44-ФЗ, поставка в Москву, аванс от 30 %» — я разберу их в фильтры.', next:'Понятно'},
   {screen:'work', sel:'.abar', title:'Строка помощника', text:'Пишите сюда обычными словами: «только 223-ФЗ», «поставка в Казань», «убери аванс». Каждое условие станет чипом ниже. Микрофон — если удобнее сказать.', next:'Дальше'},
-  {screen:'work', sel:'.fpanel', title:'Все условия — здесь', text:'Панель условий свёрнута, чтобы не отвлекать: выбранное видно чипами над списком. Разверните её кнопкой «›» — там все условия, блоки раскрываются, а у чисел есть поля «своё». Свернуть обратно — кнопкой «‹».', next:'Дальше'},
+  {screen:'work', sel:'.fpanel', title:'Все условия — здесь', text:'Панель условий свёрнута, чтобы не отвлекать: выбранное видно чипами над списком. Разверните её кнопкой «›» или «Все фильтры» над списком — там все условия, блоки раскрываются, а у чисел есть поля «своё». Свернуть обратно — кнопкой «‹».', next:'Дальше'},
   {screen:'work', sel:'.chips', title:'Что выбрано — всегда видно', text:'Каждое условие — чип над списком. Крестик снимает его, остальные остаются. Сюда же попадает то, что вы написали словами.', next:'Дальше'},
   {screen:'work', sel:'.grow:not(.hd) .chkb', title:'Отметьте процедуры', text:'Галочка на процедуре — и помощник ответит по её документации с цитатами из ТЗ и проекта договора: срок поставки, аванс, обеспечение, гарантия.', next:'Дальше'},
   {screen:'work', sel:'.apanel', title:'Лента помощника', text:'Здесь его ответы: срок поставки, аванс, гарантия — с цитатами из ТЗ и договора. Спросите словами или нажмите кнопку темы.', next:'Готово'},
