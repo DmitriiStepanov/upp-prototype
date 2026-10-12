@@ -8303,7 +8303,10 @@ window.saveToFolder = function(folderName, ids, silent){
   fbLog('save', {n:ids.length});
   if(!S.fb.firstSave) S.fb.firstSave = {ms:Date.now()-S.fb.t0, steps:S.fb.events.length-1};
   fbSaveOld(folderName, ids, silent);
-  if(!silent) setTimeout(fbAskFound, 1200);
+  /* Окно «Сохранить в подборку» (doSave) сохраняет «тихо» — со своим
+     тостом, поэтому вопрос задаём при любом сохранении, не только при
+     обычном. */
+  setTimeout(fbAskFound, 1200);
 };
 function fbFmtMs(ms){ const s = Math.round(ms/1000); return s<60 ? `${s} с` : `${Math.floor(s/60)} мин ${s%60} с`; }
 function fbMetricsHtml(){
