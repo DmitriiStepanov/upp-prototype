@@ -8338,7 +8338,11 @@ window.fbMetrics = on=>{
   el.innerHTML = fbMetricsHtml();
 };
 const fbRenderOld = window.render;
-window.render = function(){ fbRenderOld(); if(S.fb && S.fb.metricsOn) fbMetrics(true); };
+window.render = function(){
+  fbRenderOld();
+  if(S.fb && S.fb.metricsOn) fbMetrics(true);
+  if(S.fb && S.fb.pendingAsk && !S.navScreen && S.screen==='chat'){ S.fb.pendingAsk = false; setTimeout(fbAskFound, 700); }
+};
 window.avatarMenu = function(){
   return `<div class="ddmenu" style="right:0;left:auto;top:calc(100% + 8px);min-width:220px">
     <div class="ddopt" onclick="event.stopPropagation();S.openDD=null;goOnboard()">📘 Онбординг</div>
@@ -8436,6 +8440,9 @@ function fbAskFound(){
   /* Не перебиваем: один раз за сессию, раз в неделю, не в онбординге, не
      пока бот думает и не пока открыта панель настройки. */
   if(S.fb.askedSession || !fbCooldownOk() || S.busy || S.onb || S.screen!=='chat') return;
+  /* «Сохранить и перейти» уводит на экран подборки — чата там не видно.
+     Не перебиваем там: спросим, когда человек вернётся в чат. */
+  if(S.navScreen){ S.fb.pendingAsk = true; return; }
   if(S.chat.some(m=>m.x==='actions' && m.allFields)) return;
   S.fb.askedSession = true;
   S.chat.push({who:'bot', h:'', fb:{step:'ask', v:null, reasons:[], text:''}});
