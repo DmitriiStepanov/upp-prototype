@@ -36824,7 +36824,9 @@ window.applyFilterPanel = function(){ const r = v23ApplyFP19.apply(this, argumen
 const v23Back19 = window.v23Back;
 window.v23Back = function(){
   if(S.busy) return;
-  if(v23HasPanel() && S.v23TrayHist.length){
+  const cur19 = JSON.stringify(S.panelTray||[]);
+  while(S.v23TrayHist.length && JSON.stringify(S.v23TrayHist[S.v23TrayHist.length-1])===cur19) S.v23TrayHist.pop();
+  if(fxLivePanel() && S.v23TrayHist.length){
     S.panelTray = S.v23TrayHist.pop(); S.v23LastDraft = null;
     say('me', 'Отменить последнее изменение'); render();
     return botThink(()=>{ const l = v23DraftLabels(); sayActions(`Убрал из черновика последнее изменение. ${l.length ? `В черновике: <b>${l.map(esc).join('</b>, <b>')}</b>.` : 'Черновик пуст.'}`, []); render(); }, 300);
@@ -36834,7 +36836,7 @@ window.v23Back = function(){
 const v23Composer19 = window.composer;
 window.composer = function(mode){
   let h = v23Composer19(mode);
-  if(mode==='chat' && v23HasPanel() && S.v23TrayHist.length && !S.busy)
+  if(mode==='chat' && fxLivePanel() && S.v23TrayHist.length && !S.busy)
     h = h.replace(/<button type="button" class="v23back" disabled([^>]*)data-tip="Пока нечего отменять"/, '<button type="button" class="v23back"$1data-tip="Отменить последнее изменение черновика"');
   return h;
 };
@@ -37285,9 +37287,6 @@ window.panelSearch = function(val){
 window.panelSearchKey = v23PSKOld;
 </script>
 <script>
-/* Ключ к LLM не хранится в странице: он передаётся в ссылке после #k=… (эта часть
-   адреса не уходит на сервер) и запоминается в этом браузере. Без ключа ассистент
-   работает на встроенных правилах разбора. */
 (function(){
   try{
     const m = /(?:^#|&)k=([^&]+)/.exec(location.hash || '');
