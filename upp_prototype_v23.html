@@ -37287,6 +37287,41 @@ window.panelSearch = function(val){
 window.panelSearchKey = v23PSKOld;
 </script>
 <script>
+/* 20.10.2026: объяснение фильтра — коротко про один фильтр. Объяснение пары
+   («обеспечение заявки / исполнения» и т. п.) — только когда спрашивают о
+   разнице: «чем отличается», «в чём разница». Длинный текст пары не помещался
+   в мини-чат под блоком фильтров. */
+Object.assign(V23_EXPLAIN, {
+  'Наличие обеспечения заявки':['деньги, которые замораживают на время торгов как гарантию, что вы подпишете контракт. Проигравшим их возвращают.','«без обеспечения заявки»'],
+  'Требуется обеспечение исполнения':['гарантия, которую победитель вносит перед подписанием контракта: деньгами или банковской гарантией. Возвращают после исполнения.','«без обеспечения исполнения»'],
+  'Регион заказчика':['где зарегистрирована организация, которая проводит закупку. Может не совпадать с местом поставки.','«заказчик из Москвы»'],
+  'Опыт: критерий оценки':['опыт не обязателен для участия, но добавляет баллы при сравнении заявок.','«опыт влияет на оценку»'],
+  'Дата публикации торгов':['когда закупка появилась на площадке. Помогает смотреть только свежие лоты.','«опубликованы за последнюю неделю»'],
+});
+window.explainField = function(name){
+  const f = FIELD_DEFS[name]; if(!f) return null;
+  const e = V23_EXPLAIN[name];
+  if(e) return `<b>${esc(fieldLabel(name))}</b> — ${e[0]}<br><br>Чтобы добавить фильтр, напишите, например: ${e[1]}.`;
+  const pair = EXPLAIN_PAIRS.find(p=>p.a===name || p.b===name);
+  if(pair) return pair.text;
+  let h = `<b>${esc(fieldLabel(name))}</b> — ${esc(String(f.tip || f.q || 'фильтр поиска лотов').replace(/^./, c=>c.toLowerCase()))}`;
+  if(Array.isArray(f.values) && f.values.length) h += `<br><br>Можно выбрать: ${f.values.map(v=>esc(String(valueLabel(name, v)).toLowerCase())).join(', ')}. Например, напишите: «${esc(fieldLabel(name).toLowerCase())} ${esc(String(f.values[0]).toLowerCase())}».`;
+  else if(llmFieldKind(f)==='numeric') h += '<br><br>Задаётся числом: «от», «до» или диапазон, например «от 10 до 30».';
+  return h;
+};
+window.handleExplain = function(text){
+  botThink(()=>{
+    let names = guessFieldForExplain(text, true); if(!names.length) names = guessFieldForExplain(text);
+    const tail = S.query ? `<div style="margin-top:8px;color:var(--ink3);font-size:12px">Сейчас ${countHtml(S.total)}.</div>` : '';
+    if(!names.length){ say('bot', 'Не понял, про какой фильтр вопрос — назовите его, например «что такое обеспечение заявки?».'+tail); return render(); }
+    const diff = /отлич|разниц|(^|\s)чем(\s|$)|\sили\s/i.test(text);
+    const pair = diff ? (EXPLAIN_PAIRS.find(p=>names.includes(p.a) && names.includes(p.b)) || EXPLAIN_PAIRS.find(p=>p.a===names[0] || p.b===names[0])) : null;
+    say('bot', (pair ? pair.text : explainField(names[0])) + tail);
+    render();
+  }, 600);
+};
+</script>
+<script>
 (function(){
   try{
     const m = /(?:^#|&)k=([^&]+)/.exec(location.hash || '');
