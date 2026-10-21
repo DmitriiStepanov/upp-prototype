@@ -1961,6 +1961,18 @@ body.v23tuton .uptt{display:none!important}
 .fgpanel .v23ph .v23fsx .fgfound.none{color:#D92D20}
 .fgpanel .v23ph .v23fsx .fsclr{flex:none;width:20px;height:20px;border-radius:4px;color:#7D8BA6;background:none;font-size:12px;padding:0;display:flex;align-items:center;justify-content:center}
 .fgpanel .v23ph .v23fsx .fsclr:hover{background:#F4F8FF;color:#000}
+.ch1 a.regn.v23regl{display:inline-flex;align-items:center;gap:4px;color:var(--blue-d,#0045D9);text-decoration:none;cursor:pointer;border-color:rgba(0,69,217,.35)}
+.ch1 a.regn.v23regl:hover{background:#EDF2FE;border-color:#0045D9}
+.ch1 a.regn.v23regl svg{flex:none;width:11px;height:11px}
+.ccol .ch1{gap:6px}
+.ccol .ch1 a.regn.v23regl{gap:3px;padding:2px 5px}
+.ccol .ch1{position:relative;flex-wrap:wrap!important;row-gap:6px;padding-right:56px}
+.ccol .ch1 > .x{position:absolute;right:16px;top:50%;transform:translateY(-50%)}
+.ccol .ch1 .lot{flex:none;overflow:visible}
+.m.bot .ux-links .ux-link{text-align:left}
+.ccol .ccust.v23cust{color:var(--ink2,#4D5566);cursor:default}
+.ccol .ccust.v23cust:hover{text-decoration:none}
+.ch1 .tagok.v23arch{background:#EEF1F6;color:var(--ink2,#4D5566)}
 </style>
 </head>
 <body>
@@ -3079,7 +3091,7 @@ const FIELD_DEFS = {
  'НМЦ лота': {ops:['Равен','Диапазон','Больше','Меньше'], values:null, delta:800,
   q:'Какая стоимость закупки?', d:'',
   chips:['До 1 000 000 ₽','От 5 000 000 ₽'],
-  label:'Стоимость закупки', tip:'Позволяет ограничить поиск по стоимости закупки.'},
+  label:'Начальная цена', tip:'Начальная (максимальная) цена лота — с неё начинаются торги.'},
  'Есть перечень обязательных документов': {ops:['Равен'], values:['Да','Нет'], delta:200,
   q:'Какие документы необходимо предоставить?', d:'',
   chips:['Да','Нет'],
@@ -3564,7 +3576,7 @@ function freshDialog(){
 }
 function reset(){
   S = {
-    screen:'landing', tipOff:false, chat:[], busy:false, animatedCount:0,
+    screen:'onboard', tipOff:false,   /* 21.10.2026: синяя стартовая страница (копия главной Росэлторга) убрана — сразу приветствие сервиса */ chat:[], busy:false, animatedCount:0,
     total:BASE_TOTAL, navCol:false,
     filters:[], workingSet:PROCS.map(p=>p.id),
     ...freshDialog(),
@@ -3967,7 +3979,7 @@ function renderNav(){
     }
   }
   h += `<button class="nrow ${S.navScreen==='folders'?'on':''}" onclick="go('folders')">
-    <span class="ic"></span><span class="tx">Подборки</span></button>`;
+    <span class="ic"></span><span class="tx">Избранное</span></button>`;
   h += `<button class="nrow ${S.navScreen==='templates'?'on':''}" onclick="go('templates')">
     <span class="ic"></span><span class="tx">Шаблоны подбора</span></button>`;
   el.innerHTML = h;
@@ -3988,14 +4000,6 @@ function viewLanding(){
       <div class="lmenu">
         <a>Частный Бизнес ↗</a><a>Закупки</a><a>Имущество</a><a>Услуги и сервисы</a>
         <a>Удостоверяющий центр</a><a>Клиентам</a><a>О площадке</a>
-      </div>
-      <div class="licons">
-        <button class="tic">?</button>
-        <button class="tic"></button>
-        <button class="tic"></button>
-        <button class="tic"><span class="dot">99+</span></button>
-        <button class="tic"><span class="dot">99+</span></button>
-        <button class="tic"></button>
       </div>
       <div class="lava">КК</div>
     </div>
@@ -5808,9 +5812,9 @@ function condPhrase(r){
   switch(r.f){
     case 'НМЦ лота': {
       const rg = parseRangeStr(v);
-      if(rg) return `сумма ${esc(moneyShort(rg.min))} – ${esc(moneyShort(rg.max))}`;
+      if(rg) return `начальная цена ${esc(moneyShort(rg.min))} – ${esc(moneyShort(rg.max))}`;
       const n = parseAmount(valList(v)[0]);
-      return (r.o==='Больше'?'сумма от ':r.o==='Меньше'?'сумма до ':'сумма ')+esc(moneyShort(n));
+      return (r.o==='Больше'?'начальная цена от ':r.o==='Меньше'?'начальная цена до ':'начальная цена ')+esc(moneyShort(n));
     }
     case 'Наличие аванса': return yes ? 'с авансом' : 'без аванса';
     case 'Наличие обеспечения заявки': return yes ? 'с обеспечением заявки' : 'без обеспечения заявки';
@@ -5832,7 +5836,7 @@ function relaxLabel(r){
   switch(r.f){
     case 'Наличие обеспечения заявки': return yes ? 'Не требовать обеспечение' : 'Разрешить обеспечение';
     case 'Наличие аванса': return yes ? 'Убрать требование аванса' : 'Разрешить аванс';
-    case 'НМЦ лота': return 'Снять ограничение по сумме';
+    case 'НМЦ лота': return 'Снять ограничение по цене';
     case 'Место поставки': return 'Искать по всей России';
     case 'Регион заказчика': return 'Любой регион заказчика';
     case 'Тип торгов': return 'Любой закон';
@@ -6068,7 +6072,7 @@ function handleRelative(text){
     pushUndo();
     row.o = cheaper ? 'Меньше' : 'Больше';
     row.v = String(Math.max(10000, Math.round((cheaper ? cur/2 : cur*2)/1000)*1000));
-    botThink(()=>respondAfterChange({changed:[row], note:`${cheaper?'Снизил':'Поднял'} планку по сумме.`}), 500);
+    botThink(()=>respondAfterChange({changed:[row], note:`${cheaper?'Снизил':'Поднял'} планку по цене.`}), 500);
     return true;
   }
   if(WIDER.test(text)){ botThink(()=>suggestWidening(), 500); return true; }
@@ -6339,7 +6343,7 @@ function askCut(cut, soft, qText){
   const qh = `<span class="qhead">${esc(qText || cut.q)}</span>${tip?` <span class="tipi" title="${esc(tip)}">ⓘ</span>`:''}`;
   if(soft){
     acts.push(...gridButton(), ...tuneActs());
-    sayActions(`${soft.lead}${S.gridOpen?' Список обновлён.':''} Можно уточнить: ${qh}`, acts, {q:true});
+    sayActions(`${soft.lead}${S.gridOpen && !soft.same?' Список обновлён.':''} Можно уточнить: ${qh}`, acts, {q:true});
     return render();
   }
   acts.push({l:`Показать все ${fmt(S.total)}`, c:'showAllNow()', cls:'ghost'});
@@ -6965,7 +6969,7 @@ window.panelApplyText = (name)=>{
    отклонённым и будущий вопрос по нему не запрещать. Это не «Не важно». */
 function showAllNow(typed){
   if(S.busy || !S.query) return;
-  if(!typed) say('me', `Показать все ${fmt(S.total)}`);
+  if(!typed) say('me', `Показать ${fmt(S.total)} ${plural(S.total,'лот','лота','лотов')}`);   /* 21.10.2026: та же формулировка, что на кнопке */
   clearActionBlocks();
   S.pendingQ = null;
   render();
@@ -8069,7 +8073,7 @@ function renderSaveModal(){
   const usingExisting = !!S.saveSelectedFolder;
   return `<div class="modalbg" onclick="if(event.target===this)closeSaveModal()">
     <div class="modalcard" style="max-width:560px">
-      <div class="mhead"><span class="mtitle">Сохранить в подборку <span class="num" style="color:var(--ink3)">${S.saveIds.length}</span></span>
+      <div class="mhead"><span class="mtitle">Сохранить в избранное <span class="num" style="color:var(--ink3)">${S.saveIds.length}</span></span>
         <button class="mx" onclick="closeSaveModal()">×</button></div>
       <div class="sffield ${usingExisting?'':'on'}">
         <div class="sflabel">Новая папка <span style="color:var(--red)">*</span></div>
@@ -8446,7 +8450,7 @@ function viewFolderGrid(){
     <div class="gsc">
       ${S.folderItemsTab==='archived'?`<div class="infob">Здесь — лоты из этой папки с истёкшим сроком подачи заявок или перемещённые вручную. Их можно вернуть назад в активные.</div>`:''}
       ${procs.length?procs.map(p=>prow(p,{folder:S.curFolder, archived:S.folderItemsTab==='archived'})).join(''):
-      `<div style="padding:30px 6px;color:var(--ink4);font-size:14px;text-align:center">${S.folderItemsTab==='active'?(S.folderFilters.length?'Нет закупок, подходящих под фильтры':'В папке пока ничего нет'):'В архиве подборки пусто'}</div>`}</div>
+      `<div style="padding:30px 6px;color:var(--ink4);font-size:14px;text-align:center">${S.folderItemsTab==='active'?(S.folderFilters.length?'Нет закупок, подходящих под фильтры':'В папке пока ничего нет'):'В архиве папки пусто'}</div>`}</div>
     ${S.checked.length?bulkFolder():''}
   </div>`;
 }
@@ -8619,7 +8623,7 @@ const FGX = {
     hint:'Российскому производителю полезны «Запрет», «Ограничение», «Преимущество»; поставщику импорта — «Не установлен».'},
   'Режим поставки': {ctl:'chips', llm:true, label:'График поставки', labels:{'Разово':'Единоразово','Партиями':'По графику'}},
   'Место поставки': {ctl:'tree', tree:'geo', myCity:true, label:'Место поставки'},
-  'НМЦ лота': {ctl:'money', label:'Стоимость закупки'},
+  'НМЦ лота': {ctl:'money', label:'Начальная цена'},
   'Аванс: процент': {ctl:'percent', llm:true, label:'Размер аванса'},
   'Способ оплаты': {ctl:'chips', llm:true, label:'Способ оплаты', hint:'«Комбо» — часть заранее, часть после приёмки.'},
   'Этапность платежей': {ctl:'chips', llm:true, label:'Этапы оплаты'},
@@ -9783,7 +9787,7 @@ window.kcZoneHtml = function(){
    7. Под нагрузкой часть данных из документации может догружаться —
       индикатор с подсказкой в списке и карточке.
    ===================================================================== */
-const UI_NAMES = {newSearch:'Новый поиск', history:'История', saved:'Мои поиски', fav:'Подборки'};
+const UI_NAMES = {newSearch:'Новый поиск', history:'История', saved:'Мои поиски', fav:'Избранное'};
 
 /* ---------- 1. вопросы — просто и от лица поставщика ---------- */
 const V23_Q = {
@@ -9943,7 +9947,6 @@ function msDetail(t){
         <span class="ddwrap" data-dd="msk" style="position:relative;margin-left:auto" onclick="event.stopPropagation()">
           <button class="fkb" onclick="toggleDD('msk')">⋮</button>
           ${S.openDD==='msk' ? `<div class="ddmenu" style="right:0;left:auto;min-width:210px">
-            <div class="ddopt" onclick="S.openDD=null;startFromTemplate('${jsq(t.n)}')">Уточнить в чате</div>
             <div class="ddopt" onclick="S.openDD=null;toast('Переименование')">Переименовать</div>
             <div class="ddopt" style="color:var(--red)" onclick="S.openDD=null;msDelete('${jsq(t.n)}')">Удалить поиск</div></div>` : ''}
         </span></div>
@@ -10488,13 +10491,7 @@ const V23_LOGO = '<svg width="30" height="30" viewBox="0 0 32 32"><defs><linearG
 (function(){
   const top = document.querySelector('.top'), logo = top && top.querySelector('.logo');
   if(logo){ const i = document.createElement('div'); i.className = 'v23logo'; i.innerHTML = V23_LOGO; top.insertBefore(i, logo); }
-  const av = top && top.querySelector('.avatar');
-  if(av){
-    const ic = document.createElement('div'); ic.className = 'v23topic';
-    ic.innerHTML = `<button title="Справка" onclick="toast('Справка')">${V23I.help}</button><button title="Календарь торгов" onclick="toast('Календарь торгов')">${V23I.cal}</button>`
-      + `<button title="Сервисы Росэлторг" onclick="toast('Сервисы Росэлторг')">${V23I.apps}</button><button class="bellb" title="Уведомления" onclick="toast('Уведомления')">${V23I.bell}<span class="bdg9">9+</span></button>`;
-    top.insertBefore(ic, av);
-  }
+  /* 21.10.2026: в шапке только профиль — иконки справки, календаря, сервисов и уведомлений убраны */
   const foot = document.querySelector('.navfoot');
   if(foot) foot.insertAdjacentHTML('afterbegin', `<button class="v23learn" onclick="toast('Режим обучения появится в следующей версии')"><span class="ic">${V23I.play}</span><span class="tx">Режим обучения</span></button>`);
 })();
@@ -10629,7 +10626,7 @@ window.bulkLive = function(){
       ? `<span>Выбрано ${fmt(n)} из ${fmt(total)} доступных</span><button type="button" onclick="v23SelectAllAvail()">Выбрать все доступные</button>`
       : `<span>Выбраны все ${fmt(total)} доступных</span>`}</div>
     <div class="v23bb">
-      <button type="button" class="bsave" title="Сохранить в «Подборки»" onclick="openSaveModal(S.checked)">${V23I.mark}Сохранить</button>
+      <button type="button" class="bsave" title="Сохранить в «Избранное»" onclick="openSaveModal(S.checked)">${V23I.mark}Сохранить</button>
       <button type="button" class="bsq" title="Отправить коллеге" onclick="toast('Отправка коллеге')">${V23I.share}</button>
       <button type="button" class="bsq" title="Выгрузить в файл" onclick="toast('Выгрузка файла')">${V23I.down}</button>
       <span class="sp"></span><span class="bcnt">Выбрано ${fmt(n)}</span>
@@ -10747,7 +10744,7 @@ window.doSave = function(navigate){
 const v23SaveModalOld = window.renderSaveModal;
 window.renderSaveModal = function(){
   let h = v23SaveModalOld();
-  if(S.v23MoveFrom) h = h.replace(/Сохранить в подборку(\s*<span class="num")/, 'Переместить в папку$1').replace('>Сохранить</button>', '>Переместить</button>').replace('>Сохранить и перейти</button>', '>Переместить и перейти</button>');
+  if(S.v23MoveFrom) h = h.replace(/Сохранить в избранное(\s*<span class="num")/, 'Переместить в папку$1').replace('>Сохранить</button>', '>Переместить</button>').replace('>Сохранить и перейти</button>', '>Переместить и перейти</button>');
   return h;
 };
 const v23CloseSaveOld = window.closeSaveModal;
@@ -10816,7 +10813,7 @@ function v23BulkHtml(total, allFn){
       ? `<span>Выбрано ${fmt(n)} из ${fmt(total)} доступных</span><button type="button" onclick="${allFn}">Выбрать все доступные</button>`
       : `<span>Выбраны все ${fmt(total)} доступных</span>`}</div>
     <div class="v23bb">
-      <button type="button" class="bsave" title="Сохранить в «Подборки»" onclick="openSaveModal(S.checked)">${V23I.mark}Сохранить</button>
+      <button type="button" class="bsave" title="Сохранить в «Избранное»" onclick="openSaveModal(S.checked)">${V23I.mark}Сохранить</button>
       <button type="button" class="bsq" title="Отправить коллеге" onclick="toast('Отправка коллеге')">${V23I.share}</button>
       <button type="button" class="bsq" title="Выгрузить в файл" onclick="toast('Выгрузка файла')">${V23I.down}</button>
       <span class="sp"></span><span class="bcnt">Выбрано ${fmt(n)}</span>
@@ -10856,7 +10853,6 @@ window.msDetail = function(t){
           <span class="ddwrap" data-dd="msk" style="position:relative" onclick="event.stopPropagation()">
             <button class="fkb" onclick="toggleDD('msk')">⋮</button>
             ${S.openDD==='msk' ? `<div class="ddmenu" style="right:0;left:auto;min-width:210px">
-              <div class="ddopt" onclick="S.openDD=null;startFromTemplate('${jsq(t.n)}')">Уточнить в чате</div>
               <div class="ddopt" style="color:var(--red)" onclick="S.openDD=null;msDelete('${jsq(t.n)}')">Удалить поиск</div></div>` : ''}
           </span></span></div>
       <div class="msupd"><span>Обновлено ${v23When(t.updatedAt)}</span>
@@ -36077,7 +36073,6 @@ window.msDetail = function(t){
           <span class="ddwrap" data-dd="msk" style="position:relative" onclick="event.stopPropagation()">
             <button class="fkb" onclick="toggleDD('msk')">⋮</button>
             ${S.openDD==='msk' ? `<div class="ddmenu" style="right:0;left:auto;min-width:210px">
-              <div class="ddopt" onclick="S.openDD=null;startFromTemplate('${jsq(t.n)}')">Уточнить в чате</div>
               <div class="ddopt" style="color:var(--red)" onclick="S.openDD=null;msDelete('${jsq(t.n)}')">Удалить поиск</div></div>` : ''}
           </span></span></div>
       <div class="msupd2"><span>Обновлено ${v23When(t.updatedAt)}</span>
@@ -36133,7 +36128,6 @@ window.msDetail = function(t){
             <button class="fkb" title="Ещё" onclick="toggleDD('msk')">⋮</button>
             ${S.openDD==='msk' ? `<div class="ddmenu" style="right:0;left:auto;min-width:210px">
               <div class="ddopt" onclick="S.openDD=null;msDup('${jsq(t.n)}')">Дублировать</div>
-              <div class="ddopt" onclick="S.openDD=null;startFromTemplate('${jsq(t.n)}')">Уточнить в чате</div>
               <div class="ddopt" style="color:var(--red)" onclick="S.openDD=null;msDelete('${jsq(t.n)}')">Удалить поиск</div></div>` : ''}
           </span></span></div>
       <div class="kcs mschips">${v23MsChips(t)}</div>
@@ -36288,7 +36282,7 @@ window.viewFolderGrid = function(){
   const archTab = S.folderItemsTab==='archived';
   const empty = !archTab && !(S.folderFilters||[]).length && !f.items.some(i=>!i.archived);
   if(empty){
-    h = h.replace(/<div class="gsc">[\s\S]*?<\/div>(\s*<\/div>\s*)$/, `<div class="gsc" style="display:flex"><div class="v23fempty2">${V23_EMPTY_ILL}<div class="t">Ничего нет</div><div class="d">В этой подборке пока нет ни одного лота</div></div></div>$1`)
+    h = h.replace(/<div class="gsc">[\s\S]*?<\/div>(\s*<\/div>\s*)$/, `<div class="gsc" style="display:flex"><div class="v23fempty2">${V23_EMPTY_ILL}<div class="t">Ничего нет</div><div class="d">В этой папке пока нет ни одного лота</div></div></div>$1`)
          .replace(/<div class="gh2">([\s\S]*?)<\/div>\s*<\/div>/, (m, inner)=>`<div class="gh2">${inner.replace(/<button class="gbtn"/g, '<button class="gbtn" disabled').replace(/<span class="gbtn ddwrap"([^>]*)>\s*<button type="button"/, '<span class="gbtn ddwrap"$1><button type="button" disabled')}</div></div>`);
   }
   return h;
@@ -36339,12 +36333,12 @@ function v23DlgHtml(){
   const x = `<button type="button" class="dx v23x" title="Закрыть" onclick="v23DlgClose()">${V23_X}</button>`;
   if(d.type === 'folderDel') return `<div class="v23dlgc" role="dialog" aria-modal="true">${x}
     <div class="dic">${V23_INFO}</div><h3>Удалить папку?</h3>
-    <div class="dt">Вы действительно хотите удалить подборку «${esc(d.name)}»? Лоты из неё не пропадут из поиска.</div>
+    <div class="dt">Вы действительно хотите удалить папку «${esc(d.name)}»? Лоты из неё не пропадут из поиска.</div>
     <div class="dbtns"><button type="button" class="b2" onclick="v23DlgClose()">Отмена</button><button type="button" class="b1" onclick="v23DlgSubmit()">Удалить</button></div></div>`;
   const ren = d.type === 'folderRen', err = v23DlgErr(d);
   return `<div class="v23dlgc" role="dialog" aria-modal="true">${x}
     <h3>${ren ? 'Переименовать папку' : 'Новая папка'}</h3>
-    <div class="dl">Название для подборки</div>
+    <div class="dl">Название папки</div>
     <div class="dinp"><input value="${esc(d.val)}" maxlength="80" oninput="v23DlgInput(this)" onkeydown="if(event.key==='Enter'){event.preventDefault();v23DlgSubmit()}">
       <button type="button" class="clr" title="Очистить" style="${d.val ? '' : 'visibility:hidden'}" onclick="v23DlgClear()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 7l10 10M17 7L7 17"/></svg></button></div>
     <div class="derr">${d.val && err !== 'Введите название' ? esc(err) : ''}</div>
@@ -37120,7 +37114,7 @@ const TUT_CH = [
   {n:'Как искать', d:'Запрос своими словами, вопросы ассистента, блок «Ход подбора»'},
   {n:'Фильтры вручную и через чат', d:'Блок фильтров, черновик, команды и вопросы в чат'},
   {n:'Список и карточка лота', d:'Что значат цифры в списке, условия из документации, расхождения'},
-  {n:'Мои поиски и подборки', d:'Как следить за новыми лотами и хранить нужные'},
+  {n:'Мои поиски и избранное', d:'Как следить за новыми лотами и хранить нужные'},
 ];
 const TUT_STEPS = [
   /* ---------- 1. Как искать ---------- */
@@ -37170,7 +37164,7 @@ const TUT_STEPS = [
    }},
   {ch:2, t:'Условия из документации', d:'У каждой закупки есть документы: техническое задание, проект договора. Умный поиск читает их и показывает условия, которых нет в карточке на площадке. Рядом — сам документ, его можно скачать.', el:'.ccol .docbox', place:'left'},
   {ch:2, t:'Если данные расходятся', d:'Иногда на площадке (<b>ЭТП</b>) указано одно, а в документах другое. Мы показываем значение из документации, а жёлтая метка <b>«на ЭТП: …»</b> предупреждает: проверьте документы перед подачей заявки.', el:()=>document.querySelector('.ccol .v23etpm') || document.querySelector('.ccol .docbox'), place:'left'},
-  {ch:2, t:'Сохраните нужный лот', d:'Понравился лот — «Сохранить». Он попадёт в <b>«Подборки»</b>, к нему легко вернуться.', el:()=>[...document.querySelectorAll('.ccol button')].find(b=>/Сохранить/.test(b.innerText)), place:'above',
+  {ch:2, t:'Сохраните нужный лот', d:'Понравился лот — «Сохранить». Он попадёт в <b>«Избранное»</b>, к нему легко вернуться.', el:()=>[...document.querySelectorAll('.ccol button')].find(b=>/Сохранить/.test(b.innerText)), place:'above',
    after:()=>{ S.filters = S.filters.filter(r=>!r.tutTmp); }},
   {ch:2, t:'Сохраните весь поиск', d:'Этот значок сохраняет поиск целиком. Новые лоты по нему будут появляться в <b>«Мои поиски»</b> — не нужно искать заново каждый день.', el:'.gcol .gico'},
 
@@ -37180,7 +37174,7 @@ const TUT_STEPS = [
   {ch:3, t:'Новые и все лоты', d:'<b>«Новые»</b> — лоты, которые появились после вашего прошлого визита. В следующий раз они перейдут во «Все лоты». Лоты, по которым приём заявок закончился, из «Новых» уходят сами.', el:'.mstabs2',
    pre:async()=>{ msOpen(0); await TUT_W(400); }},
   {ch:3, t:'Условия поиска', d:'Сверху — условия поиска. Поменять их можно в окне «Фильтры». По умолчанию показываем только <b>активные</b> лоты — те, по которым ещё идёт приём заявок.', el:'.mschips'},
-  {ch:3, t:'Подборки', d:'Ваши папки с сохранёнными лотами. Заведите отдельные папки для разных направлений или заказчиков.', el:'.v23fav .flist',
+  {ch:3, t:'Избранное', d:'Ваши папки с сохранёнными лотами. Заведите отдельные папки для разных направлений или заказчиков.', el:'.v23fav .flist',
    pre:async()=>{ go('folders'); await TUT_W(300); }},
   {ch:3, t:'Готово!', d:'Теперь вы знаете главное: напишите, что поставляете, уточните поиск вопросами или фильтрами, откройте лот и сохраните нужное. Режим обучения можно запустить снова в любой момент — внизу меню слева.', last:true},
 ];
@@ -37320,6 +37314,328 @@ window.handleExplain = function(text){
     render();
   }, 600);
 };
+</script>
+<script>
+/* =====================================================================
+   20.10.2026: после ответа вне очереди (клик по фильтру в «Ходе подбора»)
+   ассистент возвращается к самому раннему вопросу без ответа — обычно к
+   прерванному — и говорит об этом. Раньше он шёл дальше от выбранного
+   вопроса, а более ранние откладывал до конца: казалось, что вопрос пропущен.
+   ===================================================================== */
+const v23AqNextResume = window.aqNext;
+window.aqNext = function(lead){
+  const a = S.aq;
+  if(a && !a.single && a.cur){
+    const idx = a.items.findIndex(it=>it.key===a.cur);
+    const fp = a.items.findIndex(it=>it.status==='pending');
+    a.v23Resume = fp>=0 && fp<idx ? a.items[fp].key : null;
+    a.cur = null;
+  }
+  return v23AqNextResume(lead);
+};
+const v23AqAskResume = window.aqAsk;
+window.aqAsk = function(key, lead){
+  const a = S.aq;
+  if(a && a.v23Resume){
+    if(a.v23Resume===key){ const it = a.items.find(x=>x.key===key); lead = (lead ? lead+' ' : '') + `Вернёмся к вопросу «${esc(kcShort(it.m.field, aqLabel(it.m)))}».`; }
+    a.v23Resume = null;
+  }
+  return v23AqAskResume(key, lead);
+};
+/* Снял ответ крестиком в «Ходе подбора» — ассистент подтверждает в чате и
+   повторяет текущий вопрос (снятый вернётся в очередь). */
+const v23AqClearSay = window.aqClear;
+window.aqClear = function(key){
+  const a = S.aq, it = a && a.items.find(x=>x.key===key);
+  const was = it && it.status;
+  if(S.busy) return;
+  v23AqClearSay(key);
+  if(!a || !it || was!=='done') return;
+  const lead = `Убрал: ${esc(kcShort(it.m.field, aqLabel(it.m)).toLowerCase())}. Сейчас ${countHtml(S.total)}.`;
+  if(a.active && a.cur && a.cur!==key) return aqAsk(a.cur, lead);
+  say('bot', lead); render();
+};
+</script>
+<script>
+/* =====================================================================
+   21.10.2026: папка из вкладки «Архив» (или папка, где остались только
+   лоты в архиве) сразу открывается на архивных лотах — без лишнего клика
+   «В архиве». Переключатель «← Активные» показываем, только если активные
+   лоты в папке есть.
+   ===================================================================== */
+const v23OpenFolderArch = window.openFolder;
+window.openFolder = function(n){
+  const r = v23OpenFolderArch(n);
+  const f = findFolder(n);
+  if(f && f.items.some(i=>i.archived) && (FOLDERS_ARCHIVE.includes(f) || !f.items.some(i=>!i.archived))){ S.folderItemsTab = 'archived'; render(); }
+  return r;
+};
+const v23FolderGridArch = window.viewFolderGrid;
+window.viewFolderGrid = function(){
+  let h = v23FolderGridArch();
+  const f = findFolder(S.curFolder);
+  if(f && S.folderItemsTab==='archived' && !f.items.some(i=>!i.archived))
+    h = h.replace(/<button class="gbtn ghost on"[^>]*>← Активные<\/button>/, '');
+  return h;
+};
+</script>
+<script>
+/* =====================================================================
+   21.10.2026: чипы-списки «Можно сузить поиск: X ▾» убраны (решение по
+   JTBD). Работу «сузить выдачу» уже закрывают вопросы ассистента, «Все
+   фильтры», фразы в чате и пунктирные фильтры в «Ходе подбора»; при 2–20
+   лотах ожидаемый результат уже достигнут — следующий шаг «смотреть лоты».
+   · 2–20 лотов — без подсказок сужения: выдача + «Показать N лотов».
+   · Больше 20 и полезного вопроса нет — текст «напишите, что ещё важно» +
+     «Все фильтры».
+   · «Сузь» / «что лучше уточнить?» — один уточняющий вопрос с вариантами
+     ответа (как в режиме вопросов), а не чипы.
+   ===================================================================== */
+const v23ShowResNoNarrow = window.showResults;
+window.showResults = function(lead, hint, acts, keys, manual){
+  if(/сузить/i.test(hint||'')) hint = S.total > SEARCH_CFG.healthyMax ? 'Напишите, что ещё важно, или откройте все фильтры.' : '';
+  return v23ShowResNoNarrow(lead, hint, acts, [], manual);
+};
+window.suggestNarrowing = function(){
+  const cands = questionCandidates();
+  const lead = `Сейчас ${countHtml(S.total)}.`;
+  if(!cands.length){
+    sayActions(`${lead} Основные фильтры уже заданы — напишите своими словами, что ещё важно, или откройте все фильтры.`, tuneActs());
+    return render();
+  }
+  const sig = searchSig();
+  S.busy = true; render();
+  return chooseQuestion(cands).then(pick=>{
+    S.busy = false;
+    if(searchSig()!==sig) return render();
+    if(!S.gridOpened){ say('bot', lead); return askCut(pick.m, null, pick.q); }
+    return askCut(pick.m, {lead, same:true}, pick.q);
+  });
+};
+window.handleHelp = function(){
+  botThink(()=>{ if(!S.query) return askSubject(); suggestNarrowing(); }, 600);
+};
+</script>
+<script>
+/* =====================================================================
+   21.10.2026 · JTBD-аудит, п. 4.1 (ОТДЕЛЬНЫЙ БЛОК — чтобы откатить,
+   удалите этот <script> целиком).
+   В момент успеха — лотов 1–20 и ассистент пишет «Это в самый раз» или
+   открывает список — ссылка «Сохранить поиск — новые лоты придут в «Мои
+   поиски»». Работа «получать новые лоты регулярно» связывается с моментом,
+   когда у человека есть готовый хороший поиск. Только в последнем сообщении
+   (у старых действия гаснут), поэтому не повторяется. Главное действие не
+   меняется: ссылка, не кнопка.
+   ===================================================================== */
+const v23SayActsSave = window.sayActions;
+window.sayActions = function(html, acts, extra){
+  const t = String(html||'');
+  const ok = S.query && S.total > 0 && S.total <= SEARCH_CFG.healthyMax && !S.msEdit && !fxLivePanel()
+    && /Это в самый раз|Открываю (список|все)|Список обновлён/.test(t) && !/Сохранить поиск/.test(JSON.stringify(acts||[]));
+  if(ok) acts = (acts||[]).concat({l:'Сохранить поиск — новые лоты придут в «Мои поиски»', c:'openSaveTemplateModal()', kind:'link'});
+  return v23SayActsSave(html, acts, extra);
+};
+</script>
+<script>
+/* =====================================================================
+   21.10.2026 · JTBD-аудит, пп. 4.2, 4.3, 4.5.
+   ===================================================================== */
+/* 4.2. Числа в истории — на момент сообщения. «Найдено N» под запросом
+   фиксируется при первом показе; карточка списка, если с тех пор число
+   изменилось, подписана «сейчас N». */
+const v23MRNums = window.mRender;
+window.mRender = function(m, fresh){
+  if(m.aqc && m.aqc.n==null) m.aqc.n = S.total;
+  let h = v23MRNums(m, fresh);
+  if(h && m.v23res && !m.v23res.old && S.total !== m.v23res.n)
+    h = h.replace(`<span class="c num">${fmt(S.total)}</span>`, `<span class="c num">сейчас ${fmt(S.total)}</span>`);
+  return h;
+};
+window.v23LeadOf = function(m){
+  let h = String(m.h||'').replace(/<br\s*\/?>/gi, ' ').replace(/<div class="chiprow[\s\S]*$/,'');
+  if(m.aq){ const md = aqModel(m.aq.key); if(md) h += ` <b>${esc(md.q)}</b>`; }
+  if(m.aqc){ const n = m.aqc.n!=null ? m.aqc.n : S.total; h += ` Найдено ${fmt(n)} ${procWord(n)}.`; }
+  return h.trim();
+};
+
+/* 4.3. Подписи в «Ходе подбора» — коротко и одной фразой с именем фильтра;
+   «много лотов» — не красным (красный — только для нуля). */
+function v23KcNum(s){
+  const n = Number(String(s).replace(/[\s\u00a0]/g, ''));
+  if(!isFinite(n)) return s;
+  const r = x=>String(Math.round(x*10)/10).replace('.', ',');
+  return n >= 1e6 ? `${r(n/1e6)} млн` : n >= 1e3 ? `${r(n/1e3)} тыс.` : String(n);
+}
+function v23KcNice(field, v){
+  v = String(v||'');
+  const days = n=>`от ${n} ${Number(n)===1 ? 'дня' : 'дней'}`;
+  if(field==='Окончание приема заявок'){ const m = /(?:хватит|не меньше|после)\s*(\d+)/i.exec(v); if(m) return days(m[1]); }
+  if(field==='Срок поставки'){ const m = /(?:не больше|до)\s*(\d+)/i.exec(v); if(m) return `до ${m[1]} дней`; }
+  if(field==='НМЦ лота') return v.replace(/\d[\d\s\u00a0]{3,}\d/g, v23KcNum).replace(/^от (.+?) до (.+)$/, '$1 – $2');
+  if(field==='Наличие аванса'){ if(/без/i.test(v)) return 'нет'; if(/с аванс/i.test(v)) return 'есть'; }
+  if(field==='Наличие обеспечения заявки'){ if(/без/i.test(v)) return 'не нужно'; if(/с обеспеч|нужн|требу/i.test(v)) return 'нужно'; }
+  return v;
+}
+const v23KcHtmlNice = window.kcHtml;
+window.kcHtml = function(x){
+  const h = v23KcHtmlNice(x);
+  const field = x.aq ? x.aq.m.field : x.row && x.row.f;
+  return h.replace(/<span class="kv">([^<]*)<\/span>/, (all, kv)=>{
+    const tmp = document.createElement('span'); tmp.innerHTML = kv;
+    return `<span class="kv">${esc(v23KcNice(field, tmp.textContent))}</span>`;
+  });
+};
+const v23StatusInfoOld = window.statusInfo;
+window.statusInfo = function(){
+  const s = v23StatusInfoOld();
+  if(S.query && S.total > SEARCH_CFG.healthyMax) return {label:'Много — стоит уточнить', color:'var(--ink3)'};
+  return s;
+};
+
+/* 4.5. Предмет поиска — в именительном падеже: «Поставляю офисную мебель»
+   → «Офисная мебель» (в ответе, «Истории», «Ходе подбора», карточке). В
+   винительном отличается только женский род ед. числа: -ую → -ая,
+   -юю → -яя, -у → -а, -ю → -я. Меняем только слова до первого предлога
+   («мебель для кухни» — «кухни» не трогаем). */
+const V23_NOM_KEEP = /^(меню|кофе|какао|шоу|рагу|кенгуру|интервью|пюре|жалюзи|ту|пву|асу|ису|ибп|ппу)$/i;
+const V23_PREP = /^(для|в|во|на|с|со|по|из|к|ко|от|до|под|без|при|о|об|за|через|и|или)$/i;
+function v23Nom(topic){
+  const words = String(topic||'').split(/(\s+)/);
+  let stop = false;
+  return words.map(w=>{
+    if(stop || /^\s+$/.test(w) || !w) return w;
+    if(V23_PREP.test(w)){ stop = true; return w; }
+    if(!/^[а-яё-]+$/i.test(w) || w.length < 4 || V23_NOM_KEEP.test(w)) return w;
+    return w.replace(/ую$/i, m=>m[0]==='У' ? 'АЯ' : 'ая').replace(/юю$/i, 'яя').replace(/([^аеёиоуыэюя])у$/i, '$1а').replace(/([^аеёиоуыэюяь])ю$/i, '$1я').replace(/ию$/i, 'ия');
+  }).join('');
+}
+const v23SetQueryNom = window.setQuery;
+window.setQuery = function(topic){ return v23SetQueryNom(v23Nom(topic)); };
+</script>
+<script>
+/* =====================================================================
+   21.10.2026 (JTBD): одно действие «посмотреть лоты» — один элемент.
+   Карточка списка в чате («Офисная мебель · 12» с лупой) убрана: она
+   открывала тот же текущий список, что и кнопка, но выглядела как
+   отдельный объект (похоже на сохранённый поиск). Когда список закрыт,
+   в последнем сообщении ассистента — та же синяя кнопка «Показать N
+   лотов», что и до открытия. Кнопка в «Ходе подбора» остаётся.
+   ===================================================================== */
+window.v23MarkResult = function(){};
+function v23LastBot(){ for(let i = S.chat.length-1; i >= 0; i--){ if(S.chat[i].who==='bot') return S.chat[i]; } return null; }
+const v23MRNoCard = window.mRender;
+window.mRender = function(m, fresh){
+  if(m.v23res) delete m.v23res;
+  let h = v23MRNoCard(m, fresh);
+  const n = S.total;
+  if(!h || m!==v23LastBot() || S.gridOpen || !S.gridOpened || !S.query || !n || S.busy || S.msEdit || fxLivePanel()) return h;
+  if(m.aq || m.aqc || m.allFields || (m.acts||[]).some(a=>/showAllNow|v23OpenGrid/.test(a.c||''))) return h;
+  const btn = `<button type="button" class="ux-act pri" onclick="v23OpenGrid()">Показать ${fmt(n)} ${buyWord(n)}</button>`;
+  if(h.includes('<div class="ux-acts">')) return h.replace(/class="ux-act pri"/g, 'class="ux-act"').replace('<div class="ux-acts">', '<div class="ux-acts">'+btn);
+  if(h.includes('<div class="ux-links">')) return h.replace('<div class="ux-links">', `<div class="ux-acts">${btn}</div><div class="ux-links">`);
+  return h.replace(/<\/div><\/div>\s*$/, `<div class="ux-acts">${btn}</div></div></div>`);
+};
+</script>
+<script>
+/* =====================================================================
+   21.10.2026: шапка карточки лота.
+   · Номер процедуры — ссылка на процедуру на площадке:
+     https://www.roseltorg.ru/procedure/<номер>/<номер лота>, новая вкладка;
+     выглядит как ссылка (синий, ↗, подсказка), чтобы было понятно, что
+     на него можно нажать. «Подробнее ↗» убрано — то же действие.
+   · Заказчик — только название юрлица, без ссылки и без второй строки.
+     Остальное — в выставленных фильтрах или в «Все данные закупки».
+   ===================================================================== */
+const V23_EXT_IC = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>';
+function v23ProcUrl(p){ const lot = (/Лот\s+(\d+)/.exec(p.lot||'') || [])[1] || '1'; return `https://www.roseltorg.ru/procedure/${encodeURIComponent(p.id)}/${lot}`; }
+const v23CardHdr = window.viewCard;
+window.viewCard = function(){
+  let h = v23CardHdr.apply(this, arguments);
+  const p = S.curProc; if(!p || !h) return h;
+  const pd = displayProc(p);
+  h = h.replace(/<span class="regn">([^<]*)<\/span>/, (m, id)=>`<a class="regn v23regl tipx" href="${v23ProcUrl(pd)}" target="_blank" rel="noopener" data-tip="Открыть процедуру на площадке Росэлторг" onclick="event.stopPropagation()">${id}${V23_EXT_IC}</a>`)
+       .replace(/<a class="morea"[^>]*>[\s\S]*?<\/a>/, '')
+       .replace(/<a class="ccust"[^>]*>([\s\S]*?)<\/a>/, '<div class="ccust v23cust">$1</div>')
+       .replace(/<div class="ccfull">[\s\S]*?<\/div>/, '');
+  return h;
+};
+</script>
+<script>
+/* =====================================================================
+   21.10.2026: таблица в карточке лота — основные поля ВСЕГДА (тип торгов,
+   начальная цена, место поставки, окончание приёма заявок), а фильтры,
+   которые выставил пользователь, — дополнительно, группой «Ваши фильтры».
+   Раньше любой фильтр (даже город из запроса) заменял основные поля, и
+   в карточке оставалась одна строка.
+   ===================================================================== */
+const V23_CARD_KEY = ['Тип торгов','НМЦ лота','Место поставки','Окончание приема заявок'];
+function v23CardRow(p, pd, f){
+  const d = V23_DUAL.includes(f) ? v23Dual(p, f) : null;
+  const v = critValueOnProc(f, pd);
+  if(!d && v==null) return '';
+  return `<tr class="${d ? 'dualrow '+d.state : ''}"><td>${esc(fieldLabel(f))}</td><td>${d ? v23DualHtml(d, false) : esc(String(v))}</td></tr>`;
+}
+const v23CardKeyBase = window.viewCard;
+window.viewCard = function(){
+  let h = v23CardKeyBase.apply(this, arguments);
+  const p = S.curProc; if(!p || !h) return h;
+  const pd = displayProc(p);
+  /* поля «ЭТП + документация» — не здесь, а в блоке «Фильтры из документации» с меткой «на ЭТП: …» (вариант Б) */
+  const userF = S.filters.map(r=>r.f).filter((f,i,a)=>f && a.indexOf(f)===i && !DOC_CRITERIA_FIELDS.includes(f) && !V23_DUAL.includes(f) && !V23_CARD_KEY.includes(f));
+  const keyRows = V23_CARD_KEY.map(f=>v23CardRow(p, pd, f)).join('');
+  const userRows = userF.map(f=>v23CardRow(p, pd, f)).join('');
+  const sub = t=>`<div style="font-size:12px;color:var(--ink4);margin-bottom:4px">${t}</div>`;
+  const block = sub('Основные данные') + (keyRows ? `<table class="ktab">${keyRows}</table>` : '')
+    + (userRows ? sub('Ваши фильтры') + `<table class="ktab">${userRows}</table>` : '');
+  return h.replace(/<div style="font-size:12px;color:var\(--ink4\);margin-bottom:4px">[^<]*<\/div>\s*(<table class="ktab">[\s\S]*?<\/table>)?/, block);
+};
+</script>
+<script>
+/* =====================================================================
+   21.10.2026: согласованность демо-данных лота.
+   · Дата окончания приёма заявок считалась от 10.08.2026, а «N дн.» в
+     списке — от сегодня. Теперь дата = сегодня + N дней.
+   · Лот со статусом «Архив» (в списке «в архиве») в карточке показывал
+     «Прием заявок» и срок в будущем. Теперь у архивного лота срок подачи
+     уже прошёл, в карточке статус «Архив» (серым).
+   ===================================================================== */
+window.fakeDate = function(daysFromNow){
+  const t = new Date(); t.setHours(0, 0, 0, 0);
+  const d = new Date(t.getTime() + Math.round(daysFromNow)*86400000);
+  return String(d.getDate()).padStart(2,'0')+' '+MONTHS_RU[d.getMonth()]+' '+d.getFullYear()+' в 09:00 мск';
+};
+function v23FixProc(p){
+  if(/архив/i.test(p.status||'')){
+    const h = String(p.id).split('').reduce((s, c)=>s + c.charCodeAt(0), 0);
+    p.days = -(3 + h % 50); p.urgent = false; p.st = 'Архив';
+  }
+  p.end = fakeDate(p.days);
+  return p;
+}
+PROCS.forEach(v23FixProc);
+/* лоты под конкретный запрос создаются позже (makeProc) — правим и их */
+const v23MakeProcFix = window.makeProc;
+window.makeProc = function(){ return v23FixProc(v23MakeProcFix.apply(this, arguments)); };
+if(typeof recomputeWorkingSet==='function' && S.query) recomputeWorkingSet();
+const v23CardArch = window.viewCard;
+window.viewCard = function(){
+  const h = v23CardArch.apply(this, arguments);
+  return h ? h.replace('<span class="tagok">Архив</span>', '<span class="tagok v23arch">Архив</span>') : h;
+};
+/* «Учёл фильтр: аванс: Только с авансом» → «Учёл фильтр: только с авансом»:
+   если значение само себя объясняет, имя фильтра не повторяем. */
+const v23CondPhraseNice = window.condPhrase;
+window.condPhrase = function(r){
+  const s = v23CondPhraseNice(r);
+  const m = /^([^:]+):\s(.+)$/.exec(String(s||''));
+  if(m && /^(только|без|с|со|для)\s/i.test(m[2])) return m[2].charAt(0).toLowerCase() + m[2].slice(1);
+  return s;
+};
+</script>
+<script>
+/* 21.10.2026: стартовой синей страницы нет — после загрузки всех слоёв перерисовываем первый экран (иначе он остаётся в старом виде) */
+if(typeof _navSig!=='undefined') _navSig = null;
+render();
 </script>
 <script>
 (function(){
