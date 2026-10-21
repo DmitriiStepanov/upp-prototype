@@ -37633,6 +37633,32 @@ window.condPhrase = function(r){
 };
 </script>
 <script>
+/* =====================================================================
+   21.10.2026: прокрутка списка лотов и карточки не сбрасывается при
+   перерисовке («Показать ещё 20», галочка, открытие карточки). Сброс
+   наверх — только когда сменился сам список (запрос, фильтры, сортировка,
+   раздел, вкладка, папка) или открыт другой лот.
+   ===================================================================== */
+function v23ListCtx(){
+  return [S.screen, S.navScreen, S.curTemplate, S.curFolder, S.msTab, S.folderItemsTab, S.folderTab, S.query,
+    JSON.stringify((S.filters||[]).map(r=>[r.f, r.o, r.v])), JSON.stringify(S.folderFilters||[]), S.sortField, S.sortDir].join('|');
+}
+const V23_KEEP_SCROLL = [['.gcol .gsc', v23ListCtx], ['.ccol .csc', ()=>S.curProc ? S.curProc.id : '']];
+const v23RenderKeepScroll = window.render;
+const V23_SCROLL_CTX = {};   /* контекст на момент прошлой отрисовки */
+window.render = function(){
+  const keep = V23_KEEP_SCROLL.map(([sel])=>{ const e = document.querySelector(sel); return e && e.scrollTop ? [sel, e.scrollTop] : null; }).filter(Boolean);
+  const r = v23RenderKeepScroll.apply(this, arguments);
+  keep.forEach(([sel, top])=>{
+    const ctx = V23_KEEP_SCROLL.find(x=>x[0]===sel)[1]();
+    if(V23_SCROLL_CTX[sel]!==ctx) return;
+    const e = document.querySelector(sel); if(e) e.scrollTop = top;
+  });
+  V23_KEEP_SCROLL.forEach(([sel, ctx])=>{ V23_SCROLL_CTX[sel] = ctx(); });
+  return r;
+};
+</script>
+<script>
 /* 21.10.2026: стартовой синей страницы нет — после загрузки всех слоёв перерисовываем первый экран (иначе он остаётся в старом виде) */
 if(typeof _navSig!=='undefined') _navSig = null;
 render();
