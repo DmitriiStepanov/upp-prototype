@@ -1973,6 +1973,13 @@ body.v23tuton .uptt{display:none!important}
 .ccol .ccust.v23cust{color:var(--ink2,#4D5566);cursor:default}
 .ccol .ccust.v23cust:hover{text-decoration:none}
 .ch1 .tagok.v23arch{background:#EEF1F6;color:var(--ink2,#4D5566)}
+.v23msc .msacts .fkb3{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#7D8BA6;flex:none;position:relative;cursor:pointer}
+.v23msc .msacts .fkb3:hover,.v23msc .msacts .fkb3.on{background:rgba(4,80,242,.08);color:#0450F2}
+.v23msc .msacts .fmenu{position:absolute;right:0;top:calc(100% + 4px);z-index:30;background:#fff;border-radius:12px;padding:4px;min-width:200px;box-shadow:0 8px 24px rgba(13,36,85,.16);text-align:left;cursor:default}
+.v23msc .msacts .fmenu div{height:40px;display:flex;align-items:center;gap:8px;padding:0 12px;border-radius:8px;font-size:16px;font-weight:400;color:#000;white-space:nowrap;cursor:pointer}
+.v23msc .msacts .fmenu div:hover{background:#EDF3FF}
+.v23msc .msacts .fmenu div.del{color:#D92D20}
+.v23msc .msacts .fmenu svg{width:20px;height:20px;flex:none}
 </style>
 </head>
 <body>
@@ -37585,8 +37592,8 @@ window.viewCard = function(){
   const keyRows = V23_CARD_KEY.map(f=>v23CardRow(p, pd, f)).join('');
   const userRows = userF.map(f=>v23CardRow(p, pd, f)).join('');
   const sub = t=>`<div style="font-size:12px;color:var(--ink4);margin-bottom:4px">${t}</div>`;
-  const block = sub('Основные данные') + (keyRows ? `<table class="ktab">${keyRows}</table>` : '')
-    + (userRows ? sub('Ваши фильтры') + `<table class="ktab">${userRows}</table>` : '');
+  /* 21.10.2026: одна таблица — основные поля, за ними фильтры пользователя */
+  const block = sub('Основные данные') + (keyRows || userRows ? `<table class="ktab">${keyRows}${userRows}</table>` : '');
   return h.replace(/<div style="font-size:12px;color:var\(--ink4\);margin-bottom:4px">[^<]*<\/div>\s*(<table class="ktab">[\s\S]*?<\/table>)?/, block);
 };
 </script>
@@ -37656,6 +37663,88 @@ window.render = function(){
   });
   V23_KEEP_SCROLL.forEach(([sel, ctx])=>{ V23_SCROLL_CTX[sel] = ctx(); });
   return r;
+};
+</script>
+<script>
+/* =====================================================================
+   21.10.2026: окно «Фильтры» в папке «Избранного» — тот же вид, что в
+   списке лотов и в «Моих поисках» (макет 2257:78891): ширина, шапка,
+   крестик, строки, «Добавить», подвал со «Сбросить». Логика прежняя:
+   фильтры папки применяются сразу, поэтому основная кнопка — «Готово».
+   ===================================================================== */
+const v23FolderRowFM = window.folderCritRow;
+window.folderCritRow = function(r, i){
+  let h = v23FolderRowFM(r, i);
+  h = h.replace(/(<span class="cdelta[^"]*"[^>]*>)−/, '$1− ')
+       .replace(/(<button class="ctrash"[^>]*>)(✕)?(<\/button>)/, `$1${V23FM.trash}$3`)
+       .replace(/<span class="cwarn"([^>]*)>!<\/span>/, `<span class="cwarn"$1>${V23FM.warn}</span>`);
+  if(r && r.f && !/class="cwarn"/.test(h)) h = h.replace(/(<button class="ctrash")/, '<span class="cwarn none"></span>$1');
+  return h;
+};
+/* Оператор везде подписан одинаково (opLabelFor): «точно» для списков,
+   «не больше / не меньше» для чисел. Раньше в папке было «ровно», а у
+   неизменяемого оператора («Статус торгов» в «Моих поисках») — «Равен». */
+const v23DdFieldOp = window.ddField;
+window.ddField = function(id, kind, scope, idx, value, options, labelFn){
+  if(kind==='o' && !labelFn){ const row = (scopeArr(scope)||[])[idx]; if(row && row.f) labelFn = o=>opLabelFor(row.f, o); }
+  return v23DdFieldOp(id, kind, scope, idx, value, options, labelFn);
+};
+const v23CritRowOpOff = window.critRow;
+window.critRow = function(r, i){
+  const h = v23CritRowOpOff(r, i);
+  return r && r.f ? h.replace(/(<span class="esel op off"><span class="ddtrig"><span>)([^<]*)(<\/span>)/, (m, x, op, y)=>x + esc(opLabelFor(r.f, op)) + y) : h;
+};
+window.v23FolderCritReset = function(){ S.folderFilters = []; S.openDD = null; render(); };
+const v23FolderModalFM = window.renderFolderCritModal;
+window.renderFolderCritModal = function(){
+  let h = v23FolderModalFM();
+  const n = folderBaseProcs().length;
+  const ddo = S.openDD && /^f[fov]\d/.test(S.openDD);
+  const what = S.folderItemsTab==='active' ? 'активные лоты' : 'лоты в архиве';
+  h = h.replace('<div class="modalcard"', `<div class="modalcard v23fm ${ddo ? 'ddopen' : ''}"`)
+       .replace(/<span class="mtitle">[^<]*<\/span>/, '<span class="mtitle">Фильтры</span>')
+       .replace(/<button class="mx" onclick="([^"]*)">[^<]*<\/button>/, `<button class="mx" title="Закрыть" onclick="$1">${V23FM.close}</button>`)
+       .replace(/<\/div>(\s*)(<div class="mrow0">)/, `</div>$1<div class="v23fmb">$2`)
+       .replace(/<div class="mrow0">[\s\S]*?<\/div>/, `<div class="mrow0"><span class="qi">${V23FM.search}</span><span class="mquery">Папка «${esc(S.curFolder)}»: ${what}</span><span class="mcount num">${fmt(n)}</span></div>`)
+       .replace(/<div class="eadd" onclick="addFolderFilterRow\(\)">[^<]*<\/div>/, `<button type="button" class="eadd" onclick="addFolderFilterRow()">${V23FM.plus}Добавить</button>`)
+       .replace(/<div class="mfoot">[\s\S]*?<\/div>(\s*<\/div>\s*<\/div>\s*)$/, `</div><div class="mfoot"><button type="button" class="mfreset" onclick="v23FolderCritReset()">Сбросить</button><span class="sp2"></span><button type="button" class="esave" onclick="closeFolderCritModal()">Готово</button></div>$1`);
+  return h;
+};
+</script>
+<script>
+/* =====================================================================
+   21.10.2026: меню ⋮ у «Моего поиска» — как у папки в «Избранном»:
+   та же кнопка (три точки, 32 px, подсветка), то же меню с иконками
+   (Дублировать / Удалить красным) и то же окно подтверждения удаления.
+   Раньше поиск удалялся сразу, без вопроса.
+   ===================================================================== */
+const V23_DUP20 = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg>';
+const v23MsDetailKebab = window.msDetail;
+window.msDetail = function(t){
+  let h = v23MsDetailKebab(t);
+  if(!t || !h) return h;
+  const open = S.openDD==='msk', n = jsq(t.n);
+  const kb = `<span class="fkb3 ${open ? 'on' : ''}" data-dd="msk" title="Действия с поиском" onclick="event.stopPropagation();toggleDD('msk')">${V23_DOTS}
+    ${open ? `<div class="fmenu" onclick="event.stopPropagation()">
+      <div onclick="S.openDD=null;msDup('${n}')">${V23_DUP20}Дублировать</div>
+      <div class="del" onclick="S.openDD=null;v23DlgOpen('msDel','${n}')">${V23_BIN}Удалить</div></div>` : ''}</span>`;
+  return h.replace(/<span class="ddwrap" data-dd="msk"[^>]*>\s*<button class="fkb"[^>]*>⋮<\/button>\s*(<div class="ddmenu"[\s\S]*?<\/div><\/div>)?\s*<\/span>/, kb);
+};
+const v23DlgHtmlMs = window.v23DlgHtml;
+window.v23DlgHtml = function(){
+  const d = S.v23Dlg;
+  if(!d || d.type!=='msDel') return v23DlgHtmlMs();
+  const x = `<button type="button" class="dx v23x" title="Закрыть" onclick="v23DlgClose()">${V23_X}</button>`;
+  return `<div class="v23dlgc" role="dialog" aria-modal="true">${x}
+    <div class="dic">${V23_INFO}</div><h3>Удалить поиск?</h3>
+    <div class="dt">Вы действительно хотите удалить поиск «${esc(d.name)}»? Новые лоты по нему больше не будут приходить. Лоты в «Избранном» останутся.</div>
+    <div class="dbtns"><button type="button" class="b2" onclick="v23DlgClose()">Отмена</button><button type="button" class="b1" onclick="v23DlgSubmit()">Удалить</button></div></div>`;
+};
+const v23DlgSubmitMs = window.v23DlgSubmit;
+window.v23DlgSubmit = function(){
+  const d = S.v23Dlg;
+  if(d && d.type==='msDel'){ S.v23Dlg = null; return msDelete(d.name); }
+  return v23DlgSubmitMs();
 };
 </script>
 <script>
