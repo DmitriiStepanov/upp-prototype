@@ -37828,6 +37828,529 @@ window.render = function(){
 };
 </script>
 <script>
+/* =====================================================================
+   21.10.2026: вопросы ассистента — схема, утверждённая с генеральным
+   директором, и формулировки на языке поставщика.
+   · Обязательные (3–4): стоимость закупки, место поставки, окончание
+     приёма заявок, срок поставки. Что уже есть в запросе — не спрашиваем.
+     Место поставки спрашиваем, только если оно имеет смысл для закупки
+     (IT-услуги, ПО, консалтинг и т. п. оказывают удалённо — не спрашиваем).
+   · Дополнительные — до 3, выбирает LLM по контексту запроса из списка
+     допустимых; без LLM — по тому, как вопрос делит выдачу.
+   · «Способ проведения» больше не спрашиваем (поставщику неважно / непонятно).
+   · Формулировки: «Заказы на какую сумму вы берёте?», «Сколько времени
+     вам нужно на поставку?» (фильтр исправлен: срок в лоте НЕ МЕНЬШЕ
+     названного — раньше было наоборот), «Как скоро вам нужны деньги по
+     контракту?» (вместо двух вопросов про оплату), «Сколько денег готовы
+     заморозить как гарантию по контракту?» (вместо «обеспечение
+     исполнения: не больше 10% / не меньше 15%»).
+   ===================================================================== */
+AQ_MANDATORY.splice(0, AQ_MANDATORY.length, 'price', 'place', 'deadline', 'aq_dterm');   /* порядок, утверждённый с генеральным директором */
+if(CUT_BY_KEY.price) CUT_BY_KEY.price.q = 'Заказы на какую сумму вы берёте?';
+AQ_DTERM.q = 'Сколько времени вам нужно на поставку?';
+AQ_DTERM.opts = ()=>[{l:'Хватит 2 недель', o:'Больше', v:'14'},{l:'Нужен месяц', o:'Больше', v:'30'},{l:'Нужно 2–3 месяца', o:'Больше', v:'60'},{l:'Не важно', v:null}];
+const AQ_MONEY = {key:'aq_money', custom:true, field:'Наличие аванса', covers:['Способ оплаты'], label:'Оплата',
+  q:'Как скоро вам нужны деньги по контракту?',
+  opts:()=>[{l:'Нужен аванс', f:'Наличие аванса', o:'Равен', v:'Да'},{l:'Без отсрочки оплаты', f:'Способ оплаты', o:'Равен', v:['Аванс','Постоплата','Комбо']},{l:'Не важно', v:null}]};
+const AQ_SECURE = {key:'aq_secure', custom:true, field:'Размер обеспечения исполнения', covers:['Требуется обеспечение исполнения'], label:'Гарантия по контракту',
+  q:'Сколько денег готовы заморозить как гарантию по контракту?',
+  opts:()=>[{l:'Не готов', f:'Требуется обеспечение исполнения', o:'Равен', v:'Нет'},{l:'До 5% цены', f:'Размер обеспечения исполнения', o:'Меньше', v:'5'},{l:'До 10% цены', f:'Размер обеспечения исполнения', o:'Меньше', v:'10'},{l:'Не важно', v:null}]};
+/* «не больше N%» — лот без обеспечения тоже подходит (0%) */
+const v23PredSecure = REAL_FILTER_PRED['Размер обеспечения исполнения'];
+REAL_FILTER_PRED['Размер обеспечения исполнения'] = (p, val, op)=> (op==='Меньше' && p.contractBackingSize==null) ? true : v23PredSecure(p, val, op);
+const v23RowFromOptF = window.rowFromOpt;
+window.rowFromOpt = function(cut, opt){
+  if(opt && opt.f && FIELD_DEFS[opt.f]) return {f:opt.f, o:opt.o || FIELD_DEFS[opt.f].ops[0], v:opt.v, delta:FIELD_DEFS[opt.f].delta};
+  return v23RowFromOptF(cut, opt);
+};
+const v23AqModelX = window.aqModel;
+window.aqModel = function(key){ return key==='aq_money' ? AQ_MONEY : key==='aq_secure' ? AQ_SECURE : v23AqModelX(key); };
+const v23AqLabelX = window.aqLabel;
+window.aqLabel = function(m){ return m && m.custom ? m.label : v23AqLabelX(m); };
+const v23AqRowLabelX = window.aqRowLabel;
+window.aqRowLabel = function(it){
+  if(it && it.m && it.m.custom && it.val && aqFieldSet(it.m)) return it.val;
+  return v23AqRowLabelX(it);
+};
+/* подписи в «Ходе подбора» для новых вариантов */
+const V23_KC_LBL = {'хватит 2 недель':'от 2 недель', 'нужен месяц':'от месяца', 'нужно 2–3 месяца':'от 2 месяцев',
+  'нужен аванс':'с авансом', 'без отсрочки оплаты':'без отсрочки', 'не готов':'не нужна', 'до 5% цены':'до 5%', 'до 10% цены':'до 10%'};
+const v23KcNiceX = window.v23KcNice;
+window.v23KcNice = function(field, v){
+  const k = String(v||'').trim().toLowerCase();
+  if(V23_KC_LBL[k]) return V23_KC_LBL[k];
+  if(field==='Срок поставки'){ const m = /(?:не меньше|от)\s*(\d+)/i.exec(String(v||'')); if(m) return `от ${m[1]} дней`; }
+  return v23KcNiceX(field, v);
+};
+/* для работ и услуг — свои слова */
+const v23KindTextX = window.v23KindText;
+window.v23KindText = function(h){
+  const k = v23Kind(); h = v23KindTextX(h);
+  if(k==='работы') return h.replace(/нужно на поставку/g, 'нужно на выполнение работ');
+  if(k==='услуги') return h.replace(/нужно на поставку/g, 'нужно на оказание услуг');
+  return h;
+};
+/* в вопросах (и в обычном режиме) не спрашиваем то, что поставщику
+   неважно или заменено новыми вопросами */
+const V23_NO_ASK = ['Способ проведения','Событие для оплаты','Способ оплаты','Наличие аванса','Аванс: процент','Срок оплаты',
+  'Размер обеспечения исполнения','Требуется обеспечение исполнения','Форма обеспечения исполнения','Объемы / ед. изм.'];
+/* имя в «Ходе подбора» для новых вопросов — их собственное, а не поля */
+const v23KcShortX = window.kcShort;
+window.kcShort = function(field, full){ return (full===AQ_MONEY.label || full===AQ_SECURE.label) ? full : v23KcShortX(field, full); };
+const v23QCandsX = window.questionCandidates;
+window.questionCandidates = function(){ return v23QCandsX().filter(m=>!V23_NO_ASK.includes(m.field)); };
+/* место поставки не имеет смысла для удалённых услуг */
+const V23_REMOTE_RE = /(^|[^а-яёa-z])(it|ит-|айти|программн|софт|лиценз|saas|облачн|хостинг|домен|сайт|разработк|1с|консалт|консультац|аудит|юридическ|бухгалтерск|перевод|онлайн|дистанц|вебинар|подписк|техподдержк|техническ[а-яё]* поддержк|антивирус|кибер|информационн)/i;
+function v23PlaceNeeded(){ return !V23_REMOTE_RE.test(S.query||''); }
+/* дополнительные вопросы — только о том, что влияет на решение поставщика участвовать */
+const V23_EXTRA_OK = ['Наличие обеспечения заявки','МСП / СОНО','Тип торгов','Опыт: требуется для допуска','Эквивалент','Режим поставки','Этапность платежей'];
+function v23Splits(m){ const o = m.opts().filter(x=>x.v!=null); const c = optionCounts(m, o); return c.some(n=>n>0 && n<S.total); }
+function v23ExtraCands(){
+  const must = AQ_MANDATORY.map(k=>aqModel(k)).filter(Boolean).map(m=>m.field);
+  const goods = v23Kind()==='товары';   /* график поставки и аналог — только для товаров */
+  const base = getBestNextFilters().narrow.filter(m=>V23_EXTRA_OK.includes(m.field) && (goods || !['Режим поставки','Эквивалент'].includes(m.field)) && !must.includes(m.field) && !aqFieldSet(m));
+  const custom = [AQ_MONEY, AQ_SECURE].filter(m=>!aqFieldSet(m) && v23Splits(m));
+  const seen = new Set();
+  return custom.concat(base).filter(m=>!seen.has(m.key) && seen.add(m.key));
+}
+/* LLM: какие 3 дополнительных вопроса уместнее всего и нужен ли регион */
+async function v23PickExtras(cands){
+  const fallback = {needPlace:v23PlaceNeeded(), keys:cands.slice(0, AQ_EXTRA).map(m=>m.key), by:'rules'};
+  if(!LLM_CFG.apiKey || !cands.length) return fallback;
+  const keys = cands.map(m=>m.key);
+  const sys = ['Ты помогаешь поставщику найти закупки, в которых стоит участвовать.',
+    'Реши две вещи. 1) need_region: важно ли для этой закупки место поставки/оказания (false для того, что делается удалённо: IT-услуги, ПО, лицензии, консалтинг, онлайн-обучение и т. п.).',
+    '2) keys: до 3 дополнительных вопросов из списка кандидатов — те, что сильнее всего влияют на решение поставщика участвовать именно в такой закупке. Только ключи из списка.',
+    'Ответь только вызовом функции choose_extras.'].join('\n');
+  const tool = {type:'function', function:{name:'choose_extras', description:'Регион и дополнительные вопросы.',
+    parameters:{type:'object', properties:{
+      need_region:{type:'boolean'},
+      keys:{type:'array', items:{type:'string', enum:keys}, maxItems:3}
+    }, required:['need_region','keys']}}};
+  const ctx = [`Запрос: ${S.query}`, `Тип: ${v23Kind()}`,
+    `Уже указано: ${S.filters.filter(r=>r.f).map(r=>plainText(condPhrase(r))).join('; ') || 'ничего'}`,
+    'Кандидаты:', ...cands.map(m=>`- ${m.key}: ${aqLabel(m)} — ${m.q || ''}`)].join('\n');
+  const controller = new AbortController();
+  const timer = setTimeout(()=>controller.abort(), Math.max(3000, SEARCH_CFG.llmPickTimeoutMs));
+  try{
+    const res = await fetch(LLM_CFG.baseUrl.replace(/\/+$/,'')+'/v1/chat/completions', {
+      method:'POST', headers:{'Authorization':'Bearer '+LLM_CFG.apiKey, 'Content-Type':'application/json'}, signal:controller.signal,
+      body: JSON.stringify({ model:LLM_CFG.model, temperature:0, max_tokens:160, chat_template_kwargs:{enable_thinking:false},
+        tools:[tool], tool_choice:'auto', messages:[{role:'system',content:sys},{role:'user',content:ctx}] })
+    });
+    clearTimeout(timer);
+    if(!res.ok) return fallback;
+    const data = await res.json();
+    const call = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.tool_calls && data.choices[0].message.tool_calls[0];
+    if(!call) return fallback;
+    const a = JSON.parse(call.function.arguments);
+    const ks = (Array.isArray(a.keys) ? a.keys : []).filter(k=>keys.includes(k)).slice(0, AQ_EXTRA);
+    return {needPlace: typeof a.need_region==='boolean' ? a.need_region : fallback.needPlace, keys: ks.length ? ks : fallback.keys, by:'llm'};
+  }catch(e){ clearTimeout(timer); return fallback; }
+}
+window.aqStart = async function(){
+  const t0 = S.total;
+  S.busy = true; render();
+  const pick = await v23PickExtras(v23ExtraCands());
+  S.busy = false;
+  const items = [];
+  let placeSkipped = false;
+  AQ_MANDATORY.forEach(k=>{
+    const m = aqModel(k); if(!m) return;
+    if(k==='place' && !aqFieldSet(m) && !pick.needPlace){ placeSkipped = true; return; }
+    items.push({key:k, m, must:true});
+  });
+  pick.keys.forEach(k=>{ const m = aqModel(k); if(m && !items.some(it=>it.m.field===m.field)) items.push({key:k, m, must:false}); });
+  items.forEach(it=>{ it.status = aqFieldSet(it.m) ? 'done' : 'pending'; it.fromQuery = it.status==='done'; });
+  S.aq = {items, active:true, cur:null, v23Start:t0, v23More:false, v23By:pick.by};
+  const pre = items.filter(it=>it.fromQuery).map(it=>aqLabel(it.m).toLowerCase());
+  const left = items.length - pre.length;
+  const lead = `Хорошо, задам ${left} ${plural(left,'вопрос','вопроса','вопросов')}.`
+    + (pre.length ? ` ${pre.join(', ').replace(/^./, c=>c.toUpperCase())} — уже знаю из запроса.` : '')
+    + (placeSkipped ? ' Регион не спрашиваю: такое обычно делают удалённо.' : '')
+    + ' Любой можно пропустить или вернуться к нему в блоке «Ход подбора» справа.';
+  botThink(()=>aqNext(lead), 300);
+};
+</script>
+<script>
+/* =====================================================================
+   23.10.2026 (JTBD): окно «Все данные закупки» — выставленные фильтры
+   отдельной группой сверху «По вашим фильтрам», остальное ниже «Остальные
+   данные закупки» (в две колонки). Без фона и без колонки «В подборе»:
+   свои условия видны по месту, а не по пометке. Названия — как везде
+   («Начальная цена», а не «НМЦ лота»). Поля ЭТП + документация —
+   значение из документации и метка «на ЭТП: …» (вариант Б).
+   ===================================================================== */
+window.openM_allcrit = function(){
+  const p0 = S.curProc; if(!p0) return;
+  V23P = p0;
+  let p;
+  try{ p = displayProc(p0); } finally {}
+  const used = S.filters.map(r=>r.f).filter((f,i,a)=>f && a.indexOf(f)===i);
+  const val = name=>{ const d = V23_DUAL.includes(name) ? v23Dual(p0, name) : null; return {d, v: d ? d.doc : critValueOnProc(name, p)}; };
+  const mine = used.filter(n=>PROC_FIELD_DISPLAY[n] || FIELD_DEFS[n]).map(n=>Object.assign({name:n}, val(n)));
+  const rest = Object.keys(PROC_FIELD_DISPLAY).filter(n=>!used.includes(n)).map(n=>Object.assign({name:n}, val(n))).filter(r=>r.v!==null);
+  V23P = null;
+  const td = 'padding:6px 8px;border-bottom:1px solid var(--line2);vertical-align:top';
+  const row = r=>`<tr><td style="${td}">${esc(fieldLabel(r.name))}</td>
+    <td style="${td};font-weight:600">${r.v!=null ? esc(String(r.v)) : '<span style="color:var(--ink3);font-weight:400">не указано</span>'}${r.d && v23EtpMark(r.d) ? '<br>' + v23EtpMark(r.d) : ''}</td>
+    <td style="${td};font-size:12px">${docSourceCell(r.name)}</td></tr>`;
+  const table = arr=>`<table style="width:100%;border-collapse:collapse;font-size:14px;line-height:20px">
+    <thead><tr style="font-size:12px;line-height:16px;color:var(--ink4);text-align:left"><th style="padding:0 8px 6px;width:38%">Параметр</th><th style="padding:0 8px 6px">Значение</th><th style="padding:0 8px 6px">Источник</th></tr></thead>
+    <tbody>${arr.map(row).join('')}</tbody></table>`;
+  const cap = t=>`<div style="font-size:12px;line-height:16px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);margin:0 0 8px 8px">${t}</div>`;
+  const mid = Math.ceil(rest.length/2);
+  const mineHtml = mine.length ? `<div style="flex:none">${cap('По вашим фильтрам')}${table(mine)}</div>` : '';
+  const restHtml = `<div style="flex:none">${mine.length ? cap('Остальные данные закупки') : ''}<div style="display:flex;gap:20px;flex-wrap:wrap">
+      <div style="flex:1 1 380px;min-width:0">${table(rest.slice(0, mid))}</div>
+      <div style="flex:1 1 380px;min-width:0;border-left:1px solid var(--line);padding-left:20px">${table(rest.slice(mid))}</div></div></div>`;
+  const html = `<div style="position:fixed;inset:0;background:rgba(27,30,43,.42);z-index:200;display:flex;align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)this.remove()">
+    <div style="background:#fff;border-radius:16px;width:100%;max-width:1040px;max-height:94vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(27,30,43,.3)">
+      <div style="padding:14px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;flex:none">
+        <span style="font-size:24px;font-weight:500;line-height:32px;flex:1">Все данные закупки</span>
+        <button onclick="this.closest('div[style*=fixed]').remove()" style="font-size:18px;color:var(--ink3)">×</button></div>
+      <div style="padding:16px 20px;display:flex;flex-direction:column;gap:24px;overflow-y:auto">${mineHtml}${restHtml}</div>
+    </div></div>`;
+  const d = document.createElement('div'); d.innerHTML = html; document.body.appendChild(d.firstElementChild);
+  if(typeof v23UnifyClose==='function') v23UnifyClose();
+};
+</script>
+<script>
+/* =====================================================================
+   23.10.2026: без предварительного числа лотов на кнопках действий
+   («Снять ограничение по цене · 246 лотов», «Оставить … · 497 лотов»,
+   «Искать по всей России · 4 лота»). Решение: прогнозные числа не
+   показываем — каждое из них отдельный поисковый запрос. Остаётся только
+   текущее число («Показать 13 лотов») и ответ на прямой вопрос
+   «сколько будет лотов?».
+   ===================================================================== */
+const v23ActLabelCnt = window.v23ActLabel;
+window.v23ActLabel = function(a){
+  if(a && a.cnt!=null && !/^Показать список$/.test(String(a.l||''))) a = Object.assign({}, a, {cnt:null});
+  return v23ActLabelCnt(a);
+};
+</script>
+<style>
+/* 28.10.2026: значение фильтра в окне «Фильтры» — выпадающее окошко с теми же контролами, что в панели в чате */
+.esel.fmval{position:relative;cursor:pointer}
+.v23fm .crow .esel.fmval.on{border-color:#0450F2}
+.fmval .ddtrig{width:100%;text-align:left}
+.fmval .fmvt{display:flex;align-items:center;gap:8px;min-width:0;flex:1}
+.fmval .fmv1{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.fmval .fmmore{flex:none;height:24px;padding:0 8px;border-radius:12px;background:#EDF3FF;color:#0045D9;font-size:14px;line-height:24px;font-weight:500}
+.fmval .fmph0{color:#7D8BA6}
+.fmpop{position:absolute;top:calc(100% + 4px);left:-1px;z-index:40;width:420px;max-width:calc(100vw - 32px);background:#fff;border-radius:12px;
+  box-shadow:0 8px 32px rgba(19,62,146,.15),0 0 2px rgba(19,62,146,.10);display:flex;flex-direction:column;overflow:hidden;cursor:default;
+  text-align:left;font-size:16px;line-height:24px;font-weight:400;color:#000}
+.fmpop.up{top:auto;bottom:calc(100% + 4px)}
+.fmpop.fm-tree,.fmpop.fm-suggest{width:560px}
+.fmpop.fm-seg,.fmpop.fm-chips{width:auto;min-width:calc(100% + 2px)}
+.fmbody{flex:1 1 auto;min-height:0;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px;scrollbar-width:thin;scrollbar-color:#C5CEDF transparent}
+.fmbody > *{flex-shrink:0}
+.esel.fmnum{padding:0 12px!important;gap:8px}
+.esel.fmnum:focus-within{border-color:#0450F2}
+.fmnum input,.v23fm .crow .fmnum input{flex:1;min-width:0;height:38px;border:none;outline:none;background:none;padding:0!important;font:inherit;font-size:16px;color:#000}
+.fmnum input::placeholder{color:#7D8BA6}
+.fmnum .fmunit{flex:none;font-size:16px;color:#7D8BA6}
+.fm-seg .fmbody,.fm-chips .fmbody{padding:4px;gap:0}
+.fm-seg .fmbody > .fxunk,.fm-chips .fmbody > .fxunk,.fm-seg .fmbody > .fmhint,.fm-chips .fmbody > .fmhint{padding:8px 12px}
+.fmhint{font-size:14px;line-height:20px;color:#7D8BA6}
+.fmpf{flex:none;display:flex;align-items:center;gap:8px;padding:12px 16px;border-top:1px solid rgba(13,36,85,.1)}
+.fmpf .sp{flex:1}
+.fmpf .fmreset{height:40px;padding:0 12px;margin-left:-12px;border-radius:8px;color:#0045D9;font-size:16px;font-weight:500;background:none}
+.fmpf .fmreset:hover{background:#EDF3FF}
+.fmpf .esave{height:40px;padding:0 16px;border-radius:8px;background:#0450F2;color:#fff;font-size:16px;font-weight:500}
+.fmpf .esave:hover{background:#0045D9}
+.fmopt{display:flex;align-items:center;gap:12px;min-height:40px;padding:8px 12px;border-radius:8px;cursor:pointer;user-select:none;font-size:16px;line-height:24px;color:#000}
+.fmopt:hover,.fm-seg .fmopt.on{background:#EDF3FF}
+.fmopt > span{flex:1;min-width:0}
+.fmopt .fmchk{flex:none;width:20px;height:20px;background:#0450F2;-webkit-mask:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><path d='M5 12.5l4.5 4.5L19 7.5'/></svg>") center/contain no-repeat;mask:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><path d='M5 12.5l4.5 4.5L19 7.5'/></svg>") center/contain no-repeat}
+.fmpop input[type=checkbox]{width:18px;height:18px;margin:0;padding:0;border:none;flex:none;accent-color:#0450F2;pointer-events:none}
+.fmpop .fxunk input[type=checkbox]{pointer-events:auto;margin-top:1px}
+.fmpop .fxunk{font-size:14px;line-height:20px;color:#4D5566;gap:8px}
+.fmpop .fxchips{gap:8px}
+.fmpop .fxchip{height:32px;padding:0 12px;border-radius:8px;border:1px solid rgba(13,36,85,.2);background:#fff;font-size:14px;line-height:20px;color:#000;display:inline-flex;align-items:center}
+.fmpop .fxchip:hover{border-color:rgba(13,36,85,.4)}
+.fmpop .fxchip.on{background:#EDF3FF;border-color:#0450F2;color:#0045D9;font-weight:500}
+.fmpop .fxchip.on::before{content:none}
+.fmpop input.fxinp{height:40px;padding:0 12px;margin:0;font-size:16px;line-height:24px;border:1px solid rgba(13,36,85,.2);border-radius:8px;background:#fff;width:100%;min-width:0;outline:none}
+.fmpop input.fxinp:hover{border-color:rgba(13,36,85,.4)}
+.fmpop input.fxinp:focus{border-color:#0450F2}
+.fmpop input.fxq{padding-left:40px;background:#fff url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%237D8BA6' stroke-width='2' stroke-linecap='round'><circle cx='11' cy='11' r='6.5'/><path d='M20 20l-4.2-4.2'/></svg>") 12px center no-repeat}
+.fmpop .fxrow{gap:8px;font-size:16px;color:#4D5566}
+.fmpop .fxnote,.fmpop .fxempty{font-size:14px;line-height:20px;color:#7D8BA6}
+.fmpop .fxempty{padding:8px 12px}
+.fmpop .fxdep{font-size:14px;line-height:20px;border-radius:8px;padding:8px 12px}
+.fmpop .fxtoks{gap:8px}
+.fmpop .fxtok{height:28px;font-size:14px;line-height:20px;background:#EDF3FF;color:#0045D9;border-radius:6px;padding:0 4px 0 10px;font-weight:500}
+.fmpop .fxtok button{width:20px;height:20px;font-size:12px;color:#0045D9}
+.fmpop .fxlst{max-height:280px;border:none;border-radius:0;padding:0;margin:0 -8px;scrollbar-width:thin;scrollbar-color:#C5CEDF transparent}
+.fmpop .fxsug{border:none;border-radius:0;margin:0 -8px}
+.fmpop .fxit{min-height:40px;padding:8px 12px;gap:10px;font-size:16px;line-height:24px;color:#000;border-radius:8px}
+.fmpop .fxit:hover{background:#EDF3FF}
+.fmpop .fxit .fxtx small{font-size:14px;color:#7D8BA6}
+.fmpop .fxkid{padding-left:42px}
+.fmpop .fxex{width:20px;height:20px;line-height:20px;font-size:14px;color:#4D5566}
+.fmpop .okit{align-items:flex-start;padding-top:8px;padding-bottom:8px}
+.fmpop .okit .okex{width:20px;font-size:14px!important;line-height:24px;color:#4D5566}
+.fmpop .okit input{margin-top:3px}
+.fmpop .okit .okc{font-size:14px;line-height:24px;font-weight:500;color:#4D5566;min-width:72px}
+.fmpop .okit .okn{font-size:16px;line-height:24px;color:#000}
+.fmpop .okfoot{font-size:12px;line-height:16px;color:#7D8BA6;margin:0}
+.fmpop .fxcal{border:none;padding:0}
+.fmpop .fxmh{font-size:16px;font-weight:500;margin-bottom:8px}
+.fmpop .fxmh button{width:32px;height:32px;border-radius:8px;font-size:20px;color:#4D5566}
+.fmpop .fxmh button:hover{background:#EDF3FF}
+.fmpop .fxg{gap:2px 0}
+.fmpop .fxg span{font-size:12px;line-height:24px;color:#7D8BA6}
+.fmpop .fxg button{height:32px;font-size:14px;border-radius:8px;color:#000}
+.fmpop .fxg button:hover:not(:disabled){background:#EDF3FF}
+.fmpop .fxg button.in{background:#EDF3FF;border-radius:0}
+.fmpop .fxg button.edge{background:#0450F2;color:#fff;font-weight:500}
+.fmpop .fxg button.today{box-shadow:inset 0 0 0 1px #0450F2}
+.fmpop .fxg button:disabled{color:#C5CEDF}
+.fmpop .fxseg{background:#F4F8FF;border-radius:8px;padding:4px;gap:4px}
+.fmpop .fxseg button{height:32px;font-size:14px;border-radius:6px;color:#4D5566;justify-content:center}
+.fmpop .fxseg button.on{background:#fff;color:#0450F2;font-weight:500}
+.fmpop .fxsw{font-size:16px;color:#000;gap:12px}
+.fmpop .fxsw i{width:36px;height:20px}
+.fmpop .fxsw i::after{width:16px;height:16px}
+.fmpop .fxsw.on i{background:#0450F2}
+.fmpop .fxsw.on i::after{left:18px}
+.fmpop .fxdual input[type=range]{height:16px;border:none;padding:0;margin:0}
+.fmpop .fxdual .fill{background:#0450F2}
+</style>
+<script>
+/* =====================================================================
+   28.10.2026: окно «Фильтры» — значение выбирается так же, как в панели
+   в чате, а не вводится вручную. ОКПД2 и регионы — дерево с поиском,
+   даты — календарь и готовые периоды, цена — «от — до» и готовые
+   диапазоны, заказчик — поиск по названию или ИНН, списки — галочки.
+   Вид — как у остальных выпадающих списков окна: белая карточка,
+   строки 40 px, текст 16 px, «Готово» синей кнопкой.
+   Окошко пишет прямо в строку окна (S.filters, S.folderFilters), а не в
+   черновик панели: пока оно открыто (S.fmx), fxCurRow / fgSetRow
+   смотрят на эту строку. Колонка оператора остаётся на месте — неактивной
+   подписью: условие («период», «диапазон», «кроме») задаётся в окошке.
+   ===================================================================== */
+const FM_ID = {chat:'cv', folder:'fv', tpl:'tv'};
+const fmEmpty = v=>v==null || v==='' || (Array.isArray(v) && !v.length);
+function fmFx(r){ return r && r.f && FGX[r.f] && !(S.msEdit && r.f===V23_ST) ? FGX[r.f] : null; }
+function fmCtx(){ const c = S.fmx; return c && S.openDD===c.id ? c : null; }
+
+/* окошко открыто — читаем и пишем строку окна */
+const fmCurRowOld = window.fxCurRow;
+window.fxCurRow = function(name){
+  const c = fmCtx(); if(!c) return fmCurRowOld(name);
+  const arr = scopeArr(c.scope) || [];
+  const r = name===c.name ? arr[c.idx] : arr.find(x=>x && x.f===name);
+  return r && r.f===name && !fmEmpty(r.v) ? r : null;
+};
+const fmSetRowOld = window.fgSetRow;
+window.fgSetRow = function(name, row){
+  const c = fmCtx(); if(!c || name!==c.name) return fmSetRowOld(name, row);
+  const arr = scopeArr(c.scope), def = FIELD_DEFS[name] || {};
+  const base = {f:name, o:(def.ops||['Равен'])[0], v:'', delta:def.delta||0};
+  if(!row){ arr[c.idx] = base; return; }
+  row = Object.assign(base, row);
+  if(!row.unk) delete row.unk;
+  arr[c.idx] = row;
+};
+const fmRerenderOld = window.fxRerender;
+window.fxRerender = function(sel){
+  if(!fmCtx()) return fmRerenderOld(sel);
+  render();
+  if(!sel) return;
+  const el = document.querySelector('.fmpop '+sel);
+  if(el){ el.focus({preventScroll:true}); const n = el.value.length; try{ el.setSelectionRange(n, n); }catch(e){} }
+};
+/* строка без значения (фильтр выбран, значение ещё нет) ничего не отсеивает */
+const fmMatchOld = window.matchFilter;
+window.matchFilter = function(pred, p, val, op){ return fmEmpty(val) ? true : fmMatchOld(pred, p, val, op); };
+
+/* -- поле значения в строке -- */
+const FM_PH = {date:'Выберите даты', money:'Укажите сумму', percent:'Укажите размер', limit:'Укажите предел', suggest:'Найдите заказчика', toggle:'Выберите'};
+function fmPlaceholder(name, x){
+  if(x.ctl==='tree') return x.tree==='okpd' ? 'Выберите категории' : 'Выберите регион или город';
+  return FM_PH[x.ctl] || 'Выберите значение';
+}
+function fmLabels(r){
+  if(fmEmpty(r.v)) return [];
+  const L = fgValueLabels(r.f, r);
+  return FGX[r.f].ctl==='limit' ? L.map(l=>String(l).replace(/^не больше /, '')) : L;
+}
+function fmValTrig(id, scope, idx, r, x){
+  const open = S.openDD===id, L = fmLabels(r);
+  const txt = L.length
+    ? `<span class="fmv1">${esc(L[0])}</span>${L.length>1 ? `<span class="fmmore">+${L.length-1}</span>` : ''}`
+    : `<span class="fmph0">${fmPlaceholder(r.f, x)}</span>`;
+  return `<span class="esel fmval ${open?'on':''}" data-dd="${id}">
+    <button type="button" class="ddtrig" ${L.length ? `title="${esc(L.join(', '))}"` : ''} onclick="event.stopPropagation();fmOpen('${id}','${scope}',${idx})"><span class="fmvt">${txt}</span><span>▾</span></button>
+    ${open ? fmPopHtml(r.f, x) : ''}</span>`;
+}
+/* Список фильтров окна — тот же, что в панели в чате (FX_BLOCKS: те же группы и поля).
+   Раньше окно брало старый список BLOCKS, где остались справочные поля без
+   фильтра: сроки (поставки, КП, оплаты, действия БГ), объём, ИНН. */
+window.fieldGroupsFor = function(scope, currentValue){
+  const used = new Set((scopeArr(scope) || []).map(r=>r.f).filter(f=>f && f!==currentValue));
+  return fgGroups().map(g=>({n:g.n, items:g.items.filter(it=>!used.has(it))})).filter(g=>g.items.length);
+};
+/* Эти поля в окне не выбрать, но строка может прийти из чата (ответ ассистенту
+   про срок поставки) или из старого поиска — тогда поле только для цифр. */
+const FM_NUM = {'Срок поставки':'дней', 'Срок КП':'дней', 'Срок оплаты':'дней', 'Срок действия БГ':'дней', 'Объемы / ед. изм.':'', 'ИНН заказчика':''};
+function fmNumField(scope, idx, r){
+  const unit = FM_NUM[r.f], inn = r.f==='ИНН заказчика';
+  return `<span class="esel fmnum"><input inputmode="numeric" autocomplete="off" value="${esc(valText(r.v))}" placeholder="${inn ? '10 или 12 цифр' : 'Число'}"
+      oninput="this.value=this.value.replace(${inn ? '/\\D/g' : '/[^\\d,.]/g'},'');scopeArr('${scope}')[${idx}].v=this.value.replace(',','.')">${unit ? `<span class="fmunit">${unit}</span>` : ''}</span>`;
+}
+const fmValueFieldOld = window.valueField;
+window.valueField = function(id, scope, idx, r){
+  const x = fmFx(r);
+  if(x) return fmValTrig(id, scope, idx, r, x);
+  if(r && FM_NUM[r.f]!=null) return fmNumField(scope, idx, r);
+  return fmValueFieldOld(id, scope, idx, r);
+};
+
+/* -- окошко -- */
+function fmSegHtml(name, x){
+  const cur = fxCurRow(name), cv = cur ? normRu(String(valList(cur.v)[0])) : null;
+  return x.opts.map((o,i)=>{ const on = cv===normRu(o.v);
+    return `<div class="fmopt ${on?'on':''}" onclick="fmSeg('${jsq(name)}',${i})"><span>${esc(o.l)}</span>${on ? '<i class="fmchk"></i>' : ''}</div>`; }).join('');
+}
+window.fmSeg = (name, i)=>{ fgSetRow(name, {o:'Равен', v:FGX[name].opts[i].v, unk:S.fgx.unk}); fmClose(); };
+function fmChipsHtml(name){
+  const cur = fxCurRow(name), on = new Set((cur ? valList(cur.v) : []).map(v=>normRu(String(v))));
+  return fxChipOpts(name).map((o,i)=>`<div class="fmopt" onclick="fxChip('${jsq(name)}',${i})"><input type="checkbox" tabindex="-1" ${on.has(normRu(String(o.v)))?'checked':''}><span>${esc(o.l)}</span></div>`).join('');
+}
+/* даты: готовые периоды и календарь сразу, без «Свой период» */
+function fmDateHtml(name, x){
+  const cur = fxCurRow(name);
+  const pres = x.presets.map((p,i)=>{
+    const row = fxPresetRow(x, p), on = cur && !cur.cal && cur.o===row.o && String(cur.v)===row.v;
+    return `<button type="button" class="fxchip ${on?'on':''}" onclick="fxDatePre('${jsq(name)}',${i})">${esc(p.l)}</button>`;
+  }).join('');
+  /* выбран готовый период — показываем его и в календаре */
+  const s = S.fgx, keep = [s.a, s.b], rg = cur && !cur.cal && fxRange(cur.v);
+  if(rg && x.mode!=='future'){ const t = fxToday(); s.a = new Date(t - rg[1]*864e5); s.b = new Date(t - rg[0]*864e5); }
+  let cal = fxCalHtml(name, x);
+  [s.a, s.b] = keep;
+  if(cur && !cur.cal) cal = cal.replace(/<div class="fxnote">[^<]*<\/div>$/, '<div class="fxnote">Или отметьте в календаре первый и последний день</div>');
+  return `<div class="fxchips">${pres}</div>${cal}`;
+}
+function fmPopHtml(name, x){
+  const f = FIELD_DEFS[name] || {}, cur = fxCurRow(name), dep = fxDepOff(name);
+  let body = x.ctl==='seg' ? fmSegHtml(name, x) : x.ctl==='chips' ? fmChipsHtml(name) : x.ctl==='date' ? fmDateHtml(name, x) : fxEditor(name, x);
+  body = body.replace(/<input class="fxinp(?![^>]*onkeydown)/g, `<input onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}" class="fxinp`);
+  const hint = x.hint || f.tip;
+  const unk = x.llm ? `<label class="fxunk"><input type="checkbox" ${S.fgx.unk ? 'checked' : ''} onchange="fxUnk('${jsq(name)}',this.checked)">${FX_UNK}</label>` : '';
+  const foot = x.ctl==='seg' ? '' : `<div class="fmpf">${cur ? `<button type="button" class="fmreset" onclick="fxReset('${jsq(name)}')">Сбросить</button>` : ''}<span class="sp"></span>
+      <button type="button" class="esave" onclick="fmDone()">Готово</button></div>`;
+  return `<div class="fmpop fm-${x.ctl} ${S.fmUp?'up':''}" onclick="event.stopPropagation()" onmousedown="if(event.target.closest('button,.fmopt,.fxit'))event.preventDefault()">
+    <div class="fmbody">${hint ? `<div class="fmhint">${esc(hint)}</div>` : ''}${dep ? `<div class="fxdep">${esc(dep)} — фильтр неактивен</div><div class="fxoff">${body}</div>` : body}${unk}</div>${foot}</div>`;
+}
+window.fmOpen = function(id, scope, idx){
+  if(S.openDD===id){ fmClose(); return; }
+  const r = (scopeArr(scope) || [])[idx]; if(!r || !r.f) return;
+  S.fmx = {id, scope, idx, name:r.f}; S.openDD = id; S.fpField = null; S.fmUp = null; S.fddQ = '';
+  const cur = fxCurRow(r.f), cal = cur && cur.cal, base = cal ? new Date(cal.a) : fxToday();
+  S.fgx = {name:r.f, q:'', open:{}, own:!!cal, a:cal ? new Date(cal.a) : null, b:cal ? new Date(cal.b) : null,
+    y:base.getFullYear(), m:base.getMonth(), unk:!!(cur && cur.unk),
+    unit:cur && /^rub:/.test(String(cur.v)) ? 'rub' : 'pct', excl:!!(cur && cur.o==='Кроме')};
+  /* выбранное в дереве видно сразу — раскрываем ветки до него */
+  const x = FGX[r.f];
+  if(cur && x.ctl==='tree'){
+    if(x.tree==='okpd'){ const O = v23Okpd(); valList(cur.v).forEach(c=>{ let it = O.by.get(String(c)); while(it && it.p){ S.fgx.open[it.p] = true; it = O.by.get(it.p); } }); }
+    else { const T = fxTreeData(x); valList(cur.v).forEach(v=>{ const p = T.find(p=>p.kids.some(k=>k.id===String(v))); if(p) S.fgx.open[p.id] = true; }); }
+  }
+  render();
+  const l = document.querySelector('.fmpop #fxlst'), on = l && l.querySelector('input:checked');
+  if(on) l.scrollTop += on.closest('.fxit').getBoundingClientRect().top - l.getBoundingClientRect().top - 8;
+  const q = document.querySelector('.fmpop .fxq'); if(q) q.focus({preventScroll:true});
+};
+window.fmClose = function(){ S.openDD = null; S.fmx = null; render(); };
+/* «Готово» — сначала забираем недописанную сумму / процент из поля ввода */
+window.fmDone = function(){
+  const a = document.activeElement;
+  if(a && a.tagName==='INPUT' && a.type!=='checkbox' && a.closest && a.closest('.fmpop') && a.onchange) a.onchange();
+  fmClose();
+};
+/* окошко не уходит за край экрана: открываем вверх, если снизу мало места; прокрутка — внутри */
+function fmFit(lstTop){
+  const pop = document.querySelector('.fmpop'); if(!pop) return;
+  const tr = pop.parentElement.getBoundingClientRect(), vh = window.innerHeight, gap = 12;
+  if(S.fmUp==null){ const h = pop.scrollHeight, below = vh - tr.bottom - gap, above = tr.top - gap; S.fmUp = h > below && above > below; }
+  pop.classList.toggle('up', !!S.fmUp);
+  pop.style.maxHeight = Math.max(220, Math.floor((S.fmUp ? tr.top : vh - tr.bottom) - 4 - gap)) + 'px';
+  const card = pop.closest('.modalcard'), cr = card ? card.getBoundingClientRect() : {right:window.innerWidth};
+  pop.style.left = ''; pop.style.right = '';
+  if(pop.getBoundingClientRect().right > cr.right - 16){ pop.style.left = 'auto'; pop.style.right = '-1px'; }
+  if(lstTop){ const l = pop.querySelector('#fxlst'); if(l) l.scrollTop = lstTop; }
+}
+const fmRenderOld = window.render;
+window.render = function(){
+  const l = document.querySelector('.fmpop #fxlst'), top = l ? l.scrollTop : 0;
+  const r = fmRenderOld.apply(this, arguments);
+  fmFit(top);
+  return r;
+};
+
+/* -- оператор: неактивная подпись, условие задаётся в окошке -- */
+function fmOpLabel(r, x){
+  const L = fmLabels(r);
+  if(x.ctl==='date') return r.o==='После' ? 'не раньше' : 'период';
+  if(x.ctl==='money' || x.ctl==='percent') return 'диапазон';
+  if(x.ctl==='limit') return 'не больше';
+  if(r.o==='Кроме') return 'кроме';
+  return L.length>1 ? 'любое из' : 'точно';
+}
+function fmRowPost(h, r){
+  const x = fmFx(r); if(!x) return h;
+  const lab = esc(fmOpLabel(r, x));
+  h = h.replace(/<span class="esel op" data-dd="[a-z]o\d+">\s*<button[\s\S]*?<\/button>\s*<\/span>/, `<span class="esel op off"><span class="ddtrig"><span>${lab}</span><span></span></span></span>`)
+       .replace(/(<span class="esel op off"><span class="ddtrig"><span>)[^<]*(<\/span>)/, `$1${lab}$2`);
+  if(fmEmpty(r.v)) h = h.replace(/(<span class="cdelta[^"]*"[^>]*>)[^<]*/, '$1').replace(/(<span class="ctotal[^"]*"[^>]*>)[^<]*/, '$1');
+  return h;
+}
+const fmCritRowOld = window.critRow;
+window.critRow = function(r, i){ return fmRowPost(fmCritRowOld(r, i), r); };
+const fmFolderRowOld = window.folderCritRow;
+window.folderCritRow = function(r, i){ return fmRowPost(fmFolderRowOld(r, i), r); };
+
+/* -- выбрали фильтр — сразу открываем выбор значения, без подставленного «по умолчанию» -- */
+const fmSelectDDOld = window.selectDD;
+window.selectDD = function(scope, kind, idx, value){
+  if(kind!=='f' || !FGX[value] || (S.msEdit && value===V23_ST) || !FM_ID[scope]) return fmSelectDDOld.apply(this, arguments);
+  const arr = scopeArr(scope), def = FIELD_DEFS[value] || {};
+  S.fddQ = '';
+  if(arr[idx] && arr[idx].f===value){ S.openDD = null; render(); return; }
+  arr[idx] = {f:value, o:(def.ops||['Равен'])[0], v:'', delta:def.delta||0};
+  fmOpen(FM_ID[scope]+idx, scope, idx);
+};
+
+/* строки без значения не сохраняем */
+const fmDropEmpty = arr=>arr.filter(r=>!(r && r.f && fmEmpty(r.v)));
+const fmApplyOld = window.applyCrit;
+window.applyCrit = function(){ S.filters = fmDropEmpty(S.filters); return fmApplyOld.apply(this, arguments); };
+const fmMsApplyOld = window.msEditApply;
+window.msEditApply = function(){ S.filters = fmDropEmpty(S.filters); return fmMsApplyOld.apply(this, arguments); };
+const fmFolderCloseOld = window.closeFolderCritModal;
+window.closeFolderCritModal = function(){ S.folderFilters = fmDropEmpty(S.folderFilters || []); return fmFolderCloseOld.apply(this, arguments); };
+</script>
+<script>
+/* 28.10.2026: «Срок поставки» — не фильтр (в панели и окне «Фильтры» его нет, в таблице
+   критериев он справочный). Ассистент о нём больше не спрашивает (обязательные вопросы:
+   стоимость → место поставки → окончание приёма заявок), и из текста в чате он
+   фильтром не становится. В карточке лота срок поставки по-прежнему виден. */
+(function(){ const i = AQ_MANDATORY.indexOf('aq_dterm'); if(i>=0) AQ_MANDATORY.splice(i, 1); })();
+if(!V23_NO_ASK.includes('Срок поставки')) V23_NO_ASK.push('Срок поставки');
+const v23ParseNoTerm = window.parseText;
+window.parseText = async function(text){
+  const r = await v23ParseNoTerm(text);
+  if(r && Array.isArray(r.ops)) r.ops = r.ops.filter(o=>!(o && o.f==='Срок поставки'));
+  return r;
+};
+</script>
+<script>
 /* 21.10.2026: стартовой синей страницы нет — после загрузки всех слоёв перерисовываем первый экран (иначе он остаётся в старом виде) */
 if(typeof _navSig!=='undefined') _navSig = null;
 render();
