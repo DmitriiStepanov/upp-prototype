@@ -1826,6 +1826,11 @@ body.v23rzing,body.v23rzing *{cursor:col-resize!important;user-select:none!impor
 .m.bot .aqfoot{gap:4px 20px;margin-top:12px}
 .m.bot .aqfoot > span{display:none}
 .m.bot .aqc2alt{margin-top:12px}
+.m.bot .aqfit{margin-top:12px}
+.m.bot .aqfitl{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;margin-top:12px;font-size:14px;line-height:20px;color:#7D8BA6}
+.m.bot .aqfitl button{font-size:14px;font-weight:500;line-height:20px;color:#0045D9;background:none;padding:0;border:none;cursor:pointer}
+.m.bot .aqfitl button:hover{text-decoration:underline}
+.m.bot .aqfitl i{font-style:normal}
 /* число лотов — одна строка-статус */
 .m.bot .aqfound{font-size:14px;line-height:20px;color:#7D8BA6;margin-top:4px}
 .m.bot .aqnum{font-size:12px;line-height:16px;font-weight:600;color:#1245B2;background:#DEE9FF;border-radius:4px;padding:2px 6px;margin-right:6px}
@@ -9362,7 +9367,7 @@ window.decide = function(head, manual){
 function aqOfferChoice(head){
   const n = S.total, many = n > SEARCH_CFG.healthyMax;
   S.pendingQ = null;
-  const ask = many ? 'Лотов много. Как уточним поиск?'
+  const ask = many ? 'Как уточним поиск?'
     : 'Можно сразу посмотреть список или уточнить подбор. Как удобнее?';
   say('bot', `${head ? 'Понял. '+head+'<br>' : ''}<div class="aqfound">Найдено ${fmt(n)} ${procWord(n)}</div><div class="aqask">${ask}</div>`);
   S.aqChoice = true;
@@ -10055,15 +10060,23 @@ window.mRender = function(m, fresh){
   if(!m.aqc) return v23MRenderOld(m, fresh);
   const st = fresh ? '' : ' style="animation:none"';
   const n = S.total, many = n > SEARCH_CFG.healthyMax;
+  /* 28.10.2026: после первого запроса 2–20 лотов. Список сам не открываем. */
+  const fit = m.aqc.live && n >= SEARCH_CFG.healthyMin && !many;
   const body = m.aqc.live
-    ? `<div class="aqc2">
+    ? fit
+      /* 28.10.2026 (согласовано): при 2–20 — без больших карточек. Кнопка
+         «Показать N лотов» и ссылки на уточнение. Текст нейтральный: не
+         оцениваем за пользователя, много это или в самый раз. */
+      ? `<div class="ux-acts aqfit"><button type="button" class="ux-act pri" onclick="v23ChoiceShowAll()">Показать ${fmt(n)} ${plural(n,'лот','лота','лотов')}</button></div>
+        <div class="aqfitl"><span>Уточнить:</span><button type="button" onclick="aqChoose('A')">Ответить на вопросы</button><i>·</i><button type="button" onclick="aqChoose('B')">Выбрать фильтры</button></div>`
+      : `<div class="aqc2">
         <button type="button" class="aqbig" onclick="aqChoose('A')"><span class="ic">${V23_IC_CHAT}</span><b>Ответить на вопросы</b><small>Спрошу о главном: куда поставлять, цена, сроки</small></button>
         <button type="button" class="aqbig" onclick="aqChoose('B')"><span class="ic">${V23_IC_SLID}</span><b>Выбрать фильтры</b><small>Сами отметите нужные фильтры</small></button>
       </div>
       <div class="aqc2alt"><button type="button" onclick="v23ChoiceShowAll()">Показать все ${fmt(n)} ${plural(n,'лот','лота','лотов')} без уточнения</button></div>`
     : (m.aqc.picked ? `<div class="aqpicked">${esc(m.aqc.picked)}</div>` : '');
   return `<div class="m bot"${st}><div class="b">${m.h ? m.h+'<br>' : ''}<div class="aqfound">Найдено ${fmt(m.aqc.n!=null ? m.aqc.n : n)} ${procWord(m.aqc.n!=null ? m.aqc.n : n)}</div>
-    <div class="aqask">${m.aqc.live ? (many ? 'Лотов много. Как уточним поиск?' : 'Как уточним поиск?') : 'Как уточним поиск?'}</div>${body}</div></div>`;
+    <div class="aqask">${m.aqc.live ? (many ? 'Как уточним поиск?' : fit ? 'Можно перейти к результатам или уточнить поиск.' : 'Как уточним поиск?') : (m.aqc.n!=null && m.aqc.n >= SEARCH_CFG.healthyMin && m.aqc.n <= SEARCH_CFG.healthyMax ? 'Можно перейти к результатам или уточнить поиск.' : 'Как уточним поиск?')}</div>${body}</div></div>`;
 };
 function v23ChoiceDone(){ S.chat.forEach(m=>{ if(m.aqc && m.aqc.live){ m.aqc.live = false; m.aqc.n = S.total; } }); }
 const v23ChooseOld = window.aqChoose;
@@ -36582,7 +36595,7 @@ window.aqNext = function(lead){
     a.active = false; a.cur = null;
     S.chat.forEach(m=>{ if(m.aq) m.aq.live = false; });
     const left = a.items.filter(it=>it.status==='pending').length, n = S.total;
-    sayActions(`${lead ? lead+' ' : ''}${v23Few ? 'Лотов уже совсем немного — дальше уточнять рискованно, можно не найти ничего.' : 'Это в самый раз, можно смотреть. Остальные вопросы не обязательны.'}`,
+    sayActions(`${lead ? lead+' ' : ''}Можно перейти к результатам или продолжить вопросы.`,
       [{l:`Показать ${fmt(n)} ${buyWord(n)}`, c:'showAllNow()'}, {l:`Продолжить вопросы (${left})`, c:'v23AqMore()'}]);
     return render();
   }
@@ -37459,7 +37472,7 @@ const v23SayActsSave = window.sayActions;
 window.sayActions = function(html, acts, extra){
   const t = String(html||'');
   const ok = S.query && S.total > 0 && S.total <= SEARCH_CFG.healthyMax && !S.msEdit && !fxLivePanel()
-    && /Это в самый раз|Открываю (список|все)|Список обновлён/.test(t) && !/Сохранить поиск/.test(JSON.stringify(acts||[]));
+    && /Можно перейти к результатам|Открываю (список|все)|Список обновлён/.test(t) && !/Сохранить поиск/.test(JSON.stringify(acts||[]));
   if(ok) acts = (acts||[]).concat({l:'Сохранить поиск — новые лоты придут в «Мои поиски»', c:'openSaveTemplateModal()', kind:'link'});
   return v23SayActsSave(html, acts, extra);
 };
@@ -38348,6 +38361,135 @@ window.parseText = async function(text){
   const r = await v23ParseNoTerm(text);
   if(r && Array.isArray(r.ops)) r.ops = r.ops.filter(o=>!(o && o.f==='Срок поставки'));
   return r;
+};
+</script>
+<script>
+/* 29.10.2026: нейтральные формулировки — не решаем за пользователя, много
+   лотов или «в самый раз». Статус и шкала в «Ходе подбора» остаются, меняется
+   только текст: вместо оценки — что можно сделать дальше. */
+const v23StatusNeutralOld = window.statusInfo;
+window.statusInfo = function(){
+  const s = v23StatusNeutralOld(), n = S.total, c = SEARCH_CFG;
+  if(!S.query || n === 0) return s;
+  if(n < c.healthyMin) return Object.assign({}, s, {label:'Можно расширить поиск'});
+  if(n <= c.healthyMax) return Object.assign({}, s, {label:'Можно перейти к лотам'});
+  return Object.assign({}, s, {label:'Можно уточнить поиск'});
+};
+const v23RailNeutral = window.viewRail;
+window.viewRail = function(){
+  return v23RailNeutral().replace(/(\d+–\d+)(?: закупок)? — в самый раз/g, '$1 лотов');
+};
+</script>
+<style>
+/* 29.10.2026: «Все данные закупки» — по блокам, как в фильтрах */
+.v23ac{columns:2 440px;column-gap:32px}
+.v23ac .acb{break-inside:avoid;margin:0 0 20px}
+.v23ac .acb:last-child{margin-bottom:0}
+.v23ac .acn{font-size:12px;line-height:16px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);margin:0 0 4px 8px}
+.v23ac table{width:100%;border-collapse:collapse;font-size:14px;line-height:20px}
+.v23ac td{padding:6px 8px;border-bottom:1px solid var(--line2);vertical-align:top}
+.v23ac td:first-child{width:42%}
+.v23ac td.v{font-weight:600}
+.v23ac td.s{font-size:12px;width:30%}
+.v23ac .na{color:var(--ink3);font-weight:400}
+</style>
+<script>
+/* =====================================================================
+   29.10.2026 (JTBD): окно «Все данные закупки» — без группы «По вашим
+   фильтрам». Проверку «лот подходит под мои условия» закрывает карточка;
+   в окне группа разрывала связанные данные (аванс сверху, размер и срок
+   оплаты ниже) и меняла вид окна в зависимости от того, откуда его
+   открыли. Теперь одна раскладка по тем же блокам, что в фильтрах
+   («Параметры закупки», «Предмет закупки», «Оплата»…). Справочные поля,
+   которых нет в фильтрах, — в своём по смыслу блоке.
+   ===================================================================== */
+const V23_AC_EXTRA = {'Срок КП':'Параметры закупки', 'Объемы / ед. изм.':'Предмет закупки', 'Срок оплаты':'Оплата',
+  'Срок действия БГ':'Обеспечение', 'ИНН заказчика':'Заказчик', 'Срок поставки':'Сроки и графики'};
+window.openM_allcrit = function(){
+  const p0 = S.curProc; if(!p0) return;
+  V23P = p0;
+  const p = displayProc(p0);
+  const used = new Set(S.filters.map(r=>r.f).filter(Boolean));
+  const val = name=>{ const d = V23_DUAL.includes(name) ? v23Dual(p0, name) : null; return {d, v: d ? d.doc : critValueOnProc(name, p)}; };
+  const groups = fgGroups().map(g=>({n:g.n, items:g.items.slice()}));
+  Object.keys(PROC_FIELD_DISPLAY).forEach(n=>{
+    if(groups.some(g=>g.items.includes(n))) return;
+    const g = groups.find(x=>x.n===V23_AC_EXTRA[n]) || groups[groups.length-1];
+    g.items.push(n);
+  });
+  const blocks = groups.map(g=>({n:g.n, rows:g.items.filter((n,i,a)=>a.indexOf(n)===i).map(n=>Object.assign({name:n}, val(n)))
+    /* пустое значение показываем «не указано» только у выбранного фильтра — по остальным строку не выводим */
+    .filter(r=>r.v!=null || used.has(r.name))})).filter(b=>b.rows.length);
+  V23P = null;
+  const row = r=>`<tr><td>${esc(fieldLabel(r.name))}</td>
+    <td class="v">${r.v!=null ? esc(String(r.v)) : '<span class="na">не указано</span>'}${r.d && v23EtpMark(r.d) ? '<br>' + v23EtpMark(r.d) : ''}</td>
+    <td class="s">${docSourceCell(r.name)}</td></tr>`;
+  const body = `<div class="v23ac">${blocks.map(b=>`<div class="acb"><div class="acn">${esc(b.n)}</div><table><tbody>${b.rows.map(row).join('')}</tbody></table></div>`).join('')}</div>`;
+  const html = `<div style="position:fixed;inset:0;background:rgba(27,30,43,.42);z-index:200;display:flex;align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)this.remove()">
+    <div style="background:#fff;border-radius:16px;width:100%;max-width:1040px;max-height:94vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(27,30,43,.3)">
+      <div style="padding:14px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;flex:none">
+        <span style="font-size:24px;font-weight:500;line-height:32px;flex:1">Все данные закупки</span>
+        <button onclick="this.closest('div[style*=fixed]').remove()" style="font-size:18px;color:var(--ink3)">×</button></div>
+      <div style="padding:16px 20px;overflow-y:auto">${body}</div>
+    </div></div>`;
+  const d = document.createElement('div'); d.innerHTML = html; document.body.appendChild(d.firstElementChild);
+  if(typeof v23UnifyClose==='function') v23UnifyClose();
+};
+</script>
+<script>
+/* =====================================================================
+   29.10.2026: ноль или 1 лот из-за условия с диапазоном или списком
+   вариантов (цена, сроки, место, закон, ОКПД…) — не предлагаем снять его
+   целиком: «Изменить ограничение по цене» открывает этот фильтр, человек
+   сам расширяет диапазон. Снять одной кнопкой — только условия «да/нет»
+   (аванс, обеспечение, МСП). Для цены — подсказка, какие цены вообще есть
+   по запросу без этого условия (один запрос, без прогнозов по вариантам).
+   ===================================================================== */
+function v23Binary(f){ const d = FIELD_DEFS[f]; const v = d && (d.vals || d.values); return !!(v && v.length===2 && v.includes('Да') && v.includes('Нет')); }
+function v23EditLabel(r){
+  if(r.f==='НМЦ лота') return 'Изменить ограничение по цене';
+  if(r.f==='Место поставки') return 'Изменить место поставки';
+  if(r.f==='Окончание приема заявок') return 'Изменить срок подачи';
+  const lab = fieldLabel(r.f);
+  return `Изменить «${/^[А-ЯЁA-Z]{2}/.test(lab) ? lab : lab.charAt(0).toLowerCase()+lab.slice(1)}»`;
+}
+function v23FixActs(acts){
+  const seen = new Set();
+  return (acts||[]).map(a=>{
+    const m = /^relaxCondition\((\d+)\)$/.exec(String(a.c||''));
+    const r = m && S.filters[+m[1]];
+    if(!r || v23Binary(r.f)) return a;
+    return Object.assign({}, a, {l:esc(v23EditLabel(r)), c:`v23EditCond(${m[1]})`});
+  }).filter(a=>{ const k = a.c; if(seen.has(k)) return false; seen.add(k); return true; });
+}
+window.v23EditCond = function(i){
+  const r = S.filters[i]; if(!r || S.busy) return;
+  say('me', esc(v23EditLabel(r)));
+  const n0 = S.chat.length;
+  kcEdit(i);
+  /* панель фильтров сама пишет «Все фильтры» — второй реплики подряд не нужно */
+  for(let j = S.chat.length-1; j >= n0; j--){ const m = S.chat[j]; if(m.who==='me' && /^(Все фильтры|Настроить поиск)$/.test(String(m.h||''))) S.chat.splice(j, 1); }
+  render();
+};
+/* Какие начальные цены есть по запросу, если убрать ограничение по цене. */
+function v23PriceHint(){
+  const i = S.filters.findIndex(r=>r.f==='НМЦ лота'); if(i<0) return '';
+  const ids = computeN(S.filters.filter((_,j)=>j!==i));
+  const xs = ids.map(id=>PROCS_BY_ID.get(id)).map(p=>p && +p.nmck).filter(x=>x>0);
+  if(!xs.length) return '';
+  const lo = Math.min(...xs), hi = Math.max(...xs);
+  return lo===hi ? ` Без ограничения по цене есть лот с начальной ценой ${esc(moneyShort(lo))}.`
+    : ` Без ограничения по цене начальные цены — от ${esc(moneyShort(lo))} до ${esc(moneyShort(hi))}.`;
+}
+const v23WidenActsEdit = window.widenActs;
+window.widenActs = function(list){ return v23FixActs(v23WidenActsEdit(list)); };
+const v23ZeroReasonEdit = window.zeroReason;
+window.zeroReason = function(){
+  const z = v23ZeroReasonEdit();
+  if(!z || !S.filters.length) return z;
+  const acts = v23FixActs(z.acts);
+  const html = acts.some(a=>/v23EditCond/.test(a.c) && /цене/.test(a.l)) ? z.html + v23PriceHint() : z.html;
+  return Object.assign({}, z, {html, acts});
 };
 </script>
 <script>
