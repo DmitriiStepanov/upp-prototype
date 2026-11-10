@@ -39198,10 +39198,9 @@ window.renderNav = function(){
   const el = v24GetById('navSc'); if(!el) return r;
   const fav = el.querySelector(`[onclick="go('folders')"]`);
   const old = el.querySelector('.v24inav'); if(old) old.remove();
-  if(fav && V24.inboxOn){
-    const n = V24.inbox.filter(x=>!V24.seen[x.id] && v24Active(x.id)).length;
-    fav.insertAdjacentHTML('afterend', `<button class="nrow v24inav ${S.navScreen==='inbox'?'on':''}" title="${V24_INBOX_NAME}" onclick="go('inbox')"><span class="ic">${V24_IC_INBOX}</span><span class="tx">${V24_INBOX_NAME}</span>${n ? `<span class="nbadge" title="Присланные лоты, которые вы ещё не открывали">+${n}</span>` : ''}</button>`);
-  }
+  /* 10.11.2026: без счётчика — пункт появляется с первой ссылкой, этого достаточно */
+  if(fav && V24.inboxOn)
+    fav.insertAdjacentHTML('afterend', `<button class="nrow v24inav ${S.navScreen==='inbox'?'on':''}" title="${V24_INBOX_NAME}" onclick="go('inbox')"><span class="ic">${V24_IC_INBOX}</span><span class="tx">${V24_INBOX_NAME}</span></button>`);
   return r;
 };
 
