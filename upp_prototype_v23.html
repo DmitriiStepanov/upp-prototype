@@ -9367,7 +9367,7 @@ window.decide = function(head, manual){
 function aqOfferChoice(head){
   const n = S.total, many = n > SEARCH_CFG.healthyMax;
   S.pendingQ = null;
-  const ask = many ? 'Как уточним поиск?'
+  const ask = many ? 'Лотов много. Как уточним поиск?'
     : 'Можно сразу посмотреть список или уточнить подбор. Как удобнее?';
   say('bot', `${head ? 'Понял. '+head+'<br>' : ''}<div class="aqfound">Найдено ${fmt(n)} ${procWord(n)}</div><div class="aqask">${ask}</div>`);
   S.aqChoice = true;
@@ -10076,7 +10076,7 @@ window.mRender = function(m, fresh){
       <div class="aqc2alt"><button type="button" onclick="v23ChoiceShowAll()">Показать все ${fmt(n)} ${plural(n,'лот','лота','лотов')} без уточнения</button></div>`
     : (m.aqc.picked ? `<div class="aqpicked">${esc(m.aqc.picked)}</div>` : '');
   return `<div class="m bot"${st}><div class="b">${m.h ? m.h+'<br>' : ''}<div class="aqfound">Найдено ${fmt(m.aqc.n!=null ? m.aqc.n : n)} ${procWord(m.aqc.n!=null ? m.aqc.n : n)}</div>
-    <div class="aqask">${m.aqc.live ? (many ? 'Как уточним поиск?' : fit ? 'Можно перейти к результатам или уточнить поиск.' : 'Как уточним поиск?') : (m.aqc.n!=null && m.aqc.n >= SEARCH_CFG.healthyMin && m.aqc.n <= SEARCH_CFG.healthyMax ? 'Можно перейти к результатам или уточнить поиск.' : 'Как уточним поиск?')}</div>${body}</div></div>`;
+    <div class="aqask">${m.aqc.live ? (many ? 'Лотов много. Как уточним поиск?' : fit ? 'Можно перейти к результатам или уточнить поиск.' : 'Как уточним поиск?') : 'Как уточним поиск?'}</div>${body}</div></div>`;
 };
 function v23ChoiceDone(){ S.chat.forEach(m=>{ if(m.aqc && m.aqc.live){ m.aqc.live = false; m.aqc.n = S.total; } }); }
 const v23ChooseOld = window.aqChoose;
@@ -36595,7 +36595,7 @@ window.aqNext = function(lead){
     a.active = false; a.cur = null;
     S.chat.forEach(m=>{ if(m.aq) m.aq.live = false; });
     const left = a.items.filter(it=>it.status==='pending').length, n = S.total;
-    sayActions(`${lead ? lead+' ' : ''}Можно перейти к результатам или продолжить вопросы.`,
+    sayActions(`${lead ? lead+' ' : ''}${v23Few ? 'Лотов уже совсем немного — дальше уточнять рискованно, можно не найти ничего.' : 'Это в самый раз, можно смотреть. Остальные вопросы не обязательны.'}`,
       [{l:`Показать ${fmt(n)} ${buyWord(n)}`, c:'showAllNow()'}, {l:`Продолжить вопросы (${left})`, c:'v23AqMore()'}]);
     return render();
   }
@@ -37472,7 +37472,7 @@ const v23SayActsSave = window.sayActions;
 window.sayActions = function(html, acts, extra){
   const t = String(html||'');
   const ok = S.query && S.total > 0 && S.total <= SEARCH_CFG.healthyMax && !S.msEdit && !fxLivePanel()
-    && /Можно перейти к результатам|Открываю (список|все)|Список обновлён/.test(t) && !/Сохранить поиск/.test(JSON.stringify(acts||[]));
+    && /Это в самый раз|Открываю (список|все)|Список обновлён/.test(t) && !/Сохранить поиск/.test(JSON.stringify(acts||[]));
   if(ok) acts = (acts||[]).concat({l:'Сохранить поиск — новые лоты придут в «Мои поиски»', c:'openSaveTemplateModal()', kind:'link'});
   return v23SayActsSave(html, acts, extra);
 };
@@ -38363,23 +38363,6 @@ window.parseText = async function(text){
   return r;
 };
 </script>
-<script>
-/* 29.10.2026: нейтральные формулировки — не решаем за пользователя, много
-   лотов или «в самый раз». Статус и шкала в «Ходе подбора» остаются, меняется
-   только текст: вместо оценки — что можно сделать дальше. */
-const v23StatusNeutralOld = window.statusInfo;
-window.statusInfo = function(){
-  const s = v23StatusNeutralOld(), n = S.total, c = SEARCH_CFG;
-  if(!S.query || n === 0) return s;
-  if(n < c.healthyMin) return Object.assign({}, s, {label:'Можно расширить поиск'});
-  if(n <= c.healthyMax) return Object.assign({}, s, {label:'Можно перейти к лотам'});
-  return Object.assign({}, s, {label:'Можно уточнить поиск'});
-};
-const v23RailNeutral = window.viewRail;
-window.viewRail = function(){
-  return v23RailNeutral().replace(/(\d+–\d+)(?: закупок)? — в самый раз/g, '$1 лотов');
-};
-</script>
 <style>
 /* 29.10.2026: «Все данные закупки» — по блокам, как в фильтрах */
 .v23ac{columns:2 440px;column-gap:32px}
@@ -38392,6 +38375,9 @@ window.viewRail = function(){
 .v23ac td.v{font-weight:600}
 .v23ac td.s{font-size:12px;width:30%}
 .v23ac .na{color:var(--ink3);font-weight:400}
+.v23ac tr.on td{background:var(--green-bg)}
+.v23aclg{display:flex;align-items:center;gap:6px;font-size:12px;line-height:16px;color:var(--ink3);margin-right:16px}
+.v23aclg i{width:12px;height:12px;border-radius:3px;background:var(--green-bg);box-shadow:inset 0 0 0 1px rgba(7,125,85,.25)}
 </style>
 <script>
 /* =====================================================================
@@ -38401,7 +38387,8 @@ window.viewRail = function(){
    оплаты ниже) и меняла вид окна в зависимости от того, откуда его
    открыли. Теперь одна раскладка по тем же блокам, что в фильтрах
    («Параметры закупки», «Предмет закупки», «Оплата»…). Справочные поля,
-   которых нет в фильтрах, — в своём по смыслу блоке.
+   которых нет в фильтрах, — в своём по смыслу блоке. Строки выбранных
+   фильтров — на зелёном фоне.
    ===================================================================== */
 const V23_AC_EXTRA = {'Срок КП':'Параметры закупки', 'Объемы / ед. изм.':'Предмет закупки', 'Срок оплаты':'Оплата',
   'Срок действия БГ':'Обеспечение', 'ИНН заказчика':'Заказчик', 'Срок поставки':'Сроки и графики'};
@@ -38421,14 +38408,15 @@ window.openM_allcrit = function(){
     /* пустое значение показываем «не указано» только у выбранного фильтра — по остальным строку не выводим */
     .filter(r=>r.v!=null || used.has(r.name))})).filter(b=>b.rows.length);
   V23P = null;
-  const row = r=>`<tr><td>${esc(fieldLabel(r.name))}</td>
+  const row = r=>`<tr${used.has(r.name) ? ' class="on"' : ''}><td>${esc(fieldLabel(r.name))}</td>
     <td class="v">${r.v!=null ? esc(String(r.v)) : '<span class="na">не указано</span>'}${r.d && v23EtpMark(r.d) ? '<br>' + v23EtpMark(r.d) : ''}</td>
     <td class="s">${docSourceCell(r.name)}</td></tr>`;
   const body = `<div class="v23ac">${blocks.map(b=>`<div class="acb"><div class="acn">${esc(b.n)}</div><table><tbody>${b.rows.map(row).join('')}</tbody></table></div>`).join('')}</div>`;
+  const legend = blocks.some(b=>b.rows.some(r=>used.has(r.name))) ? '<span class="v23aclg"><i></i>ваши фильтры</span>' : '';
   const html = `<div style="position:fixed;inset:0;background:rgba(27,30,43,.42);z-index:200;display:flex;align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)this.remove()">
     <div style="background:#fff;border-radius:16px;width:100%;max-width:1040px;max-height:94vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(27,30,43,.3)">
       <div style="padding:14px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;flex:none">
-        <span style="font-size:24px;font-weight:500;line-height:32px;flex:1">Все данные закупки</span>
+        <span style="font-size:24px;font-weight:500;line-height:32px;flex:1">Все данные закупки</span>${legend}
         <button onclick="this.closest('div[style*=fixed]').remove()" style="font-size:18px;color:var(--ink3)">×</button></div>
       <div style="padding:16px 20px;overflow-y:auto">${body}</div>
     </div></div>`;
@@ -38436,61 +38424,1439 @@ window.openM_allcrit = function(){
   if(typeof v23UnifyClose==='function') v23UnifyClose();
 };
 </script>
+<style>
+/* 09.11.2026: правки по показу беты генеральному директору */
+/* 1. панель фильтров — поверх чата, выезжает из кнопки */
+#v24fpBtn{position:fixed;top:50%;transform:translateY(-50%);z-index:130;width:22px;padding:10px 0;display:flex;flex-direction:column;align-items:center;gap:6px;box-sizing:border-box;
+  background:#fff;color:var(--blue-d);border:1px solid #D5DEEF;border-left:none;border-radius:0 10px 10px 0;box-shadow:0 4px 14px rgba(13,36,85,.14);cursor:pointer;font-size:12px;font-weight:500;line-height:16px}
+#v24fpBtn:hover{background:#F4F8FF}
+#v24fpBtn.on{background:var(--blue);color:#fff;border-color:var(--blue)}
+#v24fpBtn .v{writing-mode:vertical-rl;transform:rotate(180deg)}
+#v24fpBtn .n{min-width:16px;height:16px;padding:0 2px;box-sizing:border-box;border-radius:8px;background:#EBF7ED;color:#077D55;font-size:10px;font-weight:600;line-height:16px;text-align:center}
+#v24fpBtn .n.dr{background:#FFF4CC;color:#8A6100}
+#v24fpBox{position:fixed;left:254px;top:12px;width:932px;height:580px;background:#fff;border-radius:16px;box-shadow:0 12px 44px rgba(27,30,43,.34);z-index:125;
+  display:flex;flex-direction:column;transform:translate(var(--v24dx,0px),var(--v24dy,0px)) scale(.04);opacity:0;visibility:hidden;transition:transform .28s cubic-bezier(.3,.8,.3,1),opacity .2s,visibility .28s}
+#v24fpBox.open{transform:none;opacity:1;visibility:visible}
+#chatSc{transition:padding-top .26s}
+#v24fpBody .fgpopfoot .palgo{display:none}
+#v24fpBody .crslpill.v24flash{border-radius:10px;animation:v24flash .7s ease-in-out 3}
+@keyframes v24flash{0%,100%{box-shadow:0 0 0 0 rgba(4,80,242,0)}50%{box-shadow:0 0 0 4px rgba(4,80,242,.38)}}
+#v24fpBody .fgfoot{position:sticky;bottom:0;z-index:2}
+#v24fpBox .v24ph{flex:none;display:flex;align-items:center;gap:12px;padding:6px 12px 6px 20px;border-bottom:1px solid var(--line);position:static;background:none;box-shadow:none;margin:0}
+#v24fpBox .v24ph .tt{font-size:18px;font-weight:600;line-height:24px}
+#v24fpBox .v24ph .st{font-size:14px;color:var(--ink3)}
+#v24fpBox .v24ph .sp{flex:1}
+#v24fpBox .v24ph .lk{width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:8px;color:var(--ink3);font-size:16px}
+#v24fpBox .v24ph .lk:hover{background:rgba(4,80,242,.08);color:var(--blue-d)}
+#v24fpBody{flex:1;min-height:0;overflow-y:auto;position:relative}
+#v24fpBody .fgpanel{border:none;box-shadow:none;background:none;margin:0;padding:16px 24px 0;max-width:none;width:auto}
+/* 2. варианты ответа */
+.v24cl{margin-top:10px;border:1px solid #D5DEEF;border-radius:12px;padding:6px;max-width:420px;background:#fff}
+.v24cl label{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:14px;line-height:20px}
+.v24cl label:hover{background:#F4F8FF}
+.v24cl input{width:16px;height:16px;flex:none;accent-color:var(--blue)}
+.v24clf{display:flex;justify-content:flex-end;padding:6px 4px 2px}
+.m.bot .v24clbtn::after{content:'';display:inline-block;width:7px;height:7px;margin-left:8px;border-right:1.6px solid currentColor;border-bottom:1.6px solid currentColor;transform:translateY(-2px) rotate(45deg)}
+.m.bot .v24clbtn.open::after{transform:translateY(1px) rotate(-135deg)}
+/* 3. стартовый экран */
+.v24lead{font-size:18px;line-height:26px;color:#4D5566;margin:-8px 0 24px}
+/* 4. «Мои поиски» */
+.v23msd .gh2{flex-wrap:wrap}
+.mstabs2 button{white-space:nowrap}
+.v24ms2{font-size:14px;line-height:20px;color:#7D8BA6}
+.v24ms2 b{font-weight:500;color:#4D5566}
+/* 5. карточка */
+.v24send{display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 8px;margin:0 4px;border-radius:6px;color:var(--blue-d);font-size:14px;font-weight:500}
+.v24send:hover{background:rgba(4,80,242,.08)}
+.v24na{color:var(--ink3);font-weight:400}
+/* 6. передача подборки, «Входящие» */
+#v24Layer .v24bg{position:fixed;inset:0;background:rgba(27,30,43,.42);z-index:260;display:flex;align-items:center;justify-content:center;padding:16px}
+.v24dlg{background:#fff;border-radius:16px;width:100%;max-width:560px;padding:20px 24px 24px;box-shadow:0 20px 60px rgba(27,30,43,.3)}
+.v24dlg h3{font-size:24px;line-height:32px;font-weight:500;margin:0 0 8px;display:flex;align-items:center}
+.v24dlg h3 span{flex:1}
+.v24dlg h3 button{font-size:18px;color:var(--ink3)}
+.v24dlg p{font-size:14px;line-height:20px;color:#4D5566;margin:0 0 16px}
+.v24link{display:flex;gap:8px}
+.v24link input{flex:1;min-width:0;height:40px;padding:0 12px;border:1px solid #D5DEEF;border-radius:8px;font-size:14px;color:#000}
+.v24pri{height:40px;padding:0 16px;border-radius:8px;background:var(--blue);color:#fff;font-size:14px;font-weight:500;white-space:nowrap}
+.v24pri:hover{filter:brightness(.94)}
+#v24Gate{position:fixed;inset:0;background:var(--bg0);z-index:270;display:flex;align-items:center;justify-content:center;padding:16px}
+#v24Gate .v24dlg{max-width:420px}
+#v24Gate .v24tabs{display:flex;gap:16px;border-bottom:1px solid var(--line);margin:0 0 16px}
+#v24Gate .v24tabs button{padding:8px 0;font-size:14px;font-weight:500;color:#7D8BA6;border-bottom:2px solid transparent;margin-bottom:-1px}
+#v24Gate .v24tabs button.on{color:var(--blue-d);border-bottom-color:var(--blue)}
+#v24Gate label{display:block;font-size:12px;line-height:16px;color:#7D8BA6;margin:0 0 12px}
+#v24Gate input{display:block;width:100%;height:40px;margin-top:4px;padding:0 12px;border:1px solid #D5DEEF;border-radius:8px;font-size:14px;color:#000;box-sizing:border-box}
+#v24Gate .v24pri{width:100%;margin-top:4px}
+.v24ib .gh2{align-items:center}
+.v24hide{display:inline-flex;align-items:center;gap:8px;font-size:14px;line-height:20px;color:#000;cursor:pointer}
+.v24hide input{width:16px;height:16px;accent-color:var(--blue)}
+.v24add{font-size:12px;line-height:16px;color:#7D8BA6;padding:8px 16px 0}
+.v24ibe{padding:48px 24px;text-align:center;color:#7D8BA6;font-size:14px;line-height:20px}
+/* демо-меню */
+.v24demob{display:flex;align-items:center;gap:10px;color:#7D8BA6;font-size:14px;padding:8px}
+.v24demob:hover{color:var(--blue-d)}
+.nav.col .v24demob .tx{display:none}
+.nav.col .v24demob{justify-content:center}
+#v24DemoM{position:fixed;left:12px;bottom:76px;width:300px;background:#fff;border-radius:12px;box-shadow:0 12px 40px rgba(27,30,43,.28);padding:8px;z-index:240}
+#v24DemoM .h{font-size:12px;line-height:16px;font-weight:600;color:#7D8BA6;padding:8px 8px 4px}
+#v24DemoM button{display:block;width:100%;text-align:left;padding:8px;border-radius:8px;font-size:14px;line-height:20px;color:#000}
+#v24DemoM button:hover{background:#F4F8FF}
+/* 8. ожидание ответа: линейный прогресс вместо спиннера */
+.v24wait{display:flex;flex-direction:column;align-items:flex-start;gap:6px}
+.v24bar{display:block;width:96px;height:3px;border-radius:2px;background:#DCE5F7;overflow:hidden}
+.v24bar i{display:block;width:40%;height:100%;border-radius:2px;background:var(--blue);animation:v24slide 1.5s cubic-bezier(.45,.05,.55,.95) infinite}
+@keyframes v24slide{0%{transform:translateX(-110%)}100%{transform:translateX(260%)}}
+.msrefresh .spin,.v23msd .msref2 .spin{width:28px;height:3px;border:none;border-radius:2px;background:linear-gradient(90deg,transparent 0,currentColor 50%,transparent 100%) no-repeat;background-size:40% 100%;animation:v24spin2 1.2s ease-in-out infinite;opacity:.8}
+.ldi::before{width:18px;height:3px;border:none;border-radius:2px;background:linear-gradient(90deg,transparent 0,var(--blue) 50%,transparent 100%) no-repeat;background-size:40% 100%;animation:v24spin2 1.2s ease-in-out infinite}
+@keyframes v24spin2{0%{background-position:-60% 0}100%{background-position:160% 0}}
+</style>
 <script>
 /* =====================================================================
-   29.10.2026: ноль или 1 лот из-за условия с диапазоном или списком
-   вариантов (цена, сроки, место, закон, ОКПД…) — не предлагаем снять его
-   целиком: «Изменить ограничение по цене» открывает этот фильтр, человек
-   сам расширяет диапазон. Снять одной кнопкой — только условия «да/нет»
-   (аванс, обеспечение, МСП). Для цены — подсказка, какие цены вообще есть
-   по запросу без этого условия (один запрос, без прогнозов по вариантам).
+   09.11.2026: правки по итогам показа беты генеральному директору.
+   Всё — одним слоем поверх прежних; чтобы откатить, удалите этот <script>
+   и <style> перед ним.
    ===================================================================== */
-function v23Binary(f){ const d = FIELD_DEFS[f]; const v = d && (d.vals || d.values); return !!(v && v.length===2 && v.includes('Да') && v.includes('Нет')); }
-function v23EditLabel(r){
-  if(r.f==='НМЦ лота') return 'Изменить ограничение по цене';
-  if(r.f==='Место поставки') return 'Изменить место поставки';
-  if(r.f==='Окончание приема заявок') return 'Изменить срок подачи';
-  const lab = fieldLabel(r.f);
-  return `Изменить «${/^[А-ЯЁA-Z]{2}/.test(lab) ? lab : lab.charAt(0).toLowerCase()+lab.slice(1)}»`;
+const V24_LS = 'upp_v24';
+const V24 = (()=>{ let o = {}; try{ o = JSON.parse(localStorage.getItem(V24_LS)) || {}; }catch(e){}
+  return Object.assign({seen:{}, done:{}, ended:{}, arr:{}, saved:[], inbox:[], inboxOn:false, qs:[], lots:{}, auth:true, lastLink:null}, o); })();
+if(V24.inbox.length) V24.inboxOn = true;
+function v24Save(){ try{ localStorage.setItem(V24_LS, JSON.stringify(V24)); }catch(e){} }
+/* Обновление страницы: открытые карточки перестают быть новыми. */
+V24.done = Object.assign({}, V24.seen);
+v24Save();
+function v24Commit(){ V24.done = Object.assign({}, V24.seen); v24Save(); }
+function v24Ensure(id){
+  if(PROCS_BY_ID.has(id)) return PROCS_BY_ID.get(id);
+  const s = V24.lots[id]; if(!s) return null;
+  PROCS_BY_ID.set(id, s);   /* только для показа: в выдачу снимок не попадает */
+  return s;
 }
-function v23FixActs(acts){
-  const seen = new Set();
-  return (acts||[]).map(a=>{
-    const m = /^relaxCondition\((\d+)\)$/.exec(String(a.c||''));
-    const r = m && S.filters[+m[1]];
-    if(!r || v23Binary(r.f)) return a;
-    return Object.assign({}, a, {l:esc(v23EditLabel(r)), c:`v23EditCond(${m[1]})`});
-  }).filter(a=>{ const k = a.c; if(seen.has(k)) return false; seen.add(k); return true; });
+function v24Remember(ids){
+  ids.forEach(id=>{ const p = PROCS_BY_ID.get(id); if(p) V24.lots[id] = p; });
+  v24Save();
 }
-window.v23EditCond = function(i){
-  const r = S.filters[i]; if(!r || S.busy) return;
-  say('me', esc(v23EditLabel(r)));
-  const n0 = S.chat.length;
-  kcEdit(i);
-  /* панель фильтров сама пишет «Все фильтры» — второй реплики подряд не нужно */
-  for(let j = S.chat.length-1; j >= n0; j--){ const m = S.chat[j]; if(m.who==='me' && /^(Все фильтры|Настроить поиск)$/.test(String(m.h||''))) S.chat.splice(j, 1); }
+function v24ApplyEnded(){
+  Object.keys(V24.ended).forEach(id=>{
+    const p = v24Ensure(id); if(!p || p.v24ended) return;
+    p.v24ended = true; p.status = 'Архивные'; p.st = 'Архив'; p.days = -1; p.urgent = false; p.end = fakeDate(-1);
+  });
+}
+function v24Active(id){ return !V24.ended[id] && v23LotOpen(id); }
+function v24Copy(text){
+  const fallback = ()=>{
+    const t = document.createElement('textarea'); t.value = text; t.style.cssText = 'position:fixed;top:-99px;opacity:0';
+    document.body.appendChild(t); t.select();
+    try{ document.execCommand('copy'); }catch(e){}
+    t.remove();
+  };
+  S.v24Copied = text;
+  if(navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).catch(fallback); else fallback();
+  toast('Ссылка скопирована');
+}
+const V24_IC_FILT = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>';
+const V24_IC_DEMO = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.8 3h10.4a2 2 0 0 0 1.8-3l-5-9V3"/><path d="M8 15h8"/></svg>';
+
+/* ---------- 1. панель фильтров поверх чата ---------- */
+const V24FP = {open:false};
+const v24GetById = document.getElementById.bind(document);
+let V24_FP_SCOPE = false;
+/* Раскладка и окошки панели меряют «#chatSc» — на время их работы это тело панели. */
+document.getElementById = function(id){
+  if(id==='chatSc' && V24_FP_SCOPE){ const e = v24GetById('v24fpBody'); if(e) return e; }
+  return v24GetById(id);
+};
+['allFiltersPanelHtml','fgLayout','fxFit','openFieldInPanel'].forEach(fn=>{
+  const old = window[fn]; if(typeof old!=='function') return;
+  window[fn] = function(){
+    const was = V24_FP_SCOPE; V24_FP_SCOPE = V24FP.open || was;
+    try{ return old.apply(this, arguments); } finally { V24_FP_SCOPE = was; }
+  };
+});
+const v24CheckLayout = window.fgCheckLayout;
+window.fgCheckLayout = function(){
+  const p = document.querySelector('[data-fp]');
+  if(!p || !p.closest('#v24fpBody')) return v24CheckLayout.apply(this, arguments);
+  clearTimeout(FG_RELAYOUT);
+  if(!V24FP.open) return;
+  FG_RELAYOUT = setTimeout(()=>{
+    const b = v24GetById('v24fpBody'), q = b && b.querySelector('[data-fp]');
+    if(V24FP.open && q && (Math.abs(b.clientWidth-48 - (+q.dataset.w)) > 24 || Math.abs(b.clientHeight - (+q.dataset.h)) > 24)) v24FpPaint();
+  }, 250);
+};
+window.addEventListener('resize', ()=>{ if(V24FP.open) window.fgCheckLayout(); v24FpBtnPaint(); });
+let V24_DRAFT_CHAT = false;   /* только на время разбора реплики: фильтр из чата идёт в выбранное панели */
+window.fxLivePanel = function(){ return V24_DRAFT_CHAT; };
+window.v23HasPanel = function(){ return V24FP.open || (S.panelTray||[]).length > 0; };
+/* Список открывается только по «Показать N лотов». */
+window.v23ManualMode = function(){ return true; };
+function v24FpDom(){
+  if(v24GetById('v24fpBtn')) return;
+  document.body.insertAdjacentHTML('beforeend', `<button type="button" id="v24fpBtn" style="display:none" title="Фильтры" onclick="v24FpToggle()"></button>
+    <div id="v24fpBox" role="dialog" aria-label="Фильтры" onclick="panelBgClick()"><div id="v24fpHead"></div><div id="v24fpBody"></div></div>`);
+}
+/* Панель стоит над последними сообщениями чата: под ней видны ответ и поле ввода. */
+const V24_FP_TOP = 12, V24_FP_STRIP = 108;
+function v24FpLayout(){
+  const b = v24GetById('v24fpBtn'), box = v24GetById('v24fpBox'), nav = v24GetById('nav'), sc = v24GetById('chatSc');
+  if(!b || !box || !nav) return;
+  const right = Math.round(nav.getBoundingClientRect().right), min = right + 34;
+  let w = Math.min(1180, innerWidth - 2*min), left = Math.round((innerWidth - w)/2);
+  if(w < 900){ w = Math.min(1180, innerWidth - min - 16); left = min; }
+  const bottom = sc ? Math.round(sc.getBoundingClientRect().bottom) : innerHeight - 200;
+  const h = Math.max(360, Math.min(600, bottom - V24_FP_STRIP - V24_FP_TOP));
+  const set = (k, v)=>{ if(box.style[k]!==v) box.style[k] = v; };
+  set('left', left+'px'); set('top', V24_FP_TOP+'px'); set('width', w+'px'); set('height', h+'px');
+  const r = b.getBoundingClientRect();
+  box.style.setProperty('--v24dx', Math.round(r.left + r.width/2 - (left + w/2))+'px');
+  box.style.setProperty('--v24dy', Math.round(r.top + r.height/2 - (V24_FP_TOP + h/2))+'px');
+}
+window.v24FpOpen = function(){
+  if(S.busy || V24FP.open) return;
+  v24FpDom(); v24FpLayout();
+  V24FP.open = true; S.fpField = null; S.fpQuery = '';
+  v24GetById('v24fpBox').classList.add('open');
+  v24FpPaint();
+};
+window.v24FpClose = function(){
+  if(!V24FP.open) return;
+  V24FP.open = false; S.fpField = null; S.v24TypeFocus = false;
+  v24FpHint();
+  v24FpAnchor();
+  v24GetById('v24fpBox').classList.remove('open');
+  v24FpBtnPaint();
+  setTimeout(()=>{ if(!V24FP.open){ v24GetById('v24fpBody').innerHTML = ''; v24GetById('v24fpHead').innerHTML = ''; } }, 320);
+};
+window.v24FpToggle = function(){ V24FP.open ? v24FpClose() : v24FpOpen(); };
+window.v24FpShow = function(){ if(S.busy) return; v24FpClose(); showAllNow(); };
+/* Значение в поле сохраняется при потере фокуса. Перерисовка в этот момент
+   съела бы клик по соседней пилюле, поэтому ждём отпускания кнопки мыши. */
+let V24_MOUSE_DOWN = false, V24_RERENDER = false, V24_REFOCUS = false;
+document.addEventListener('mousedown', e=>{
+  V24_MOUSE_DOWN = true;
+  if(!e.target.closest) return;
+  if(e.target.closest('#v24fpBox')) S.v24TypeFocus = false;
+  if(V24FP.open && S.fpField && e.target.closest('#freeIn')) V24_REFOCUS = true;
+}, true);
+document.addEventListener('mouseup', ()=>{
+  V24_MOUSE_DOWN = false;
+  setTimeout(()=>{
+    if(V24_RERENDER){ V24_RERENDER = false; render(); }
+    if(V24_REFOCUS){ V24_REFOCUS = false; focusComposer(); }
+  }, 0);
+}, true);
+const v24FxRerender = window.fxRerender;
+window.fxRerender = function(focusSel){
+  if(V24FP.open && V24_MOUSE_DOWN){ V24_RERENDER = true; return; }
+  return v24FxRerender(focusSel);
+};
+function v24FpBtnPaint(){
+  v24FpDom();
+  const b = v24GetById('v24fpBtn');
+  const on = S.screen==='chat' && !S.navScreen && !S.msEdit;
+  b.style.display = on ? '' : 'none';
+  if(!on) return;
+  const nav = v24GetById('nav');
+  if(nav){
+    b.style.left = Math.round(nav.getBoundingClientRect().right)+'px';
+    v24FpLayout();
+    if(!nav.dataset.v24){ nav.dataset.v24 = '1'; nav.addEventListener('transitionend', v24FpBtnPaint); }
+  }
+  const tray = (S.panelTray||[]).length, n = tray || S.filters.filter(r=>r.f).length;
+  const sig = `${V24FP.open}|${tray}|${n}`;
+  if(b.dataset.sig===sig) return;
+  b.dataset.sig = sig;
+  b.classList.toggle('on', V24FP.open);
+  b.title = tray ? `Фильтры: ${tray} не применено` : 'Фильтры';
+  b.innerHTML = `${V24_IC_FILT}<span class="v">Фильтры</span>${n ? `<span class="n ${tray?'dr':''}">${n}</span>` : ''}`;
+}
+/* Короткий диалог: пока панель открыта, последние сообщения стоят внизу чата,
+   в полосе под панелью. Размер и прокрутка чата при этом не меняются. */
+function v24FpAnchor(){
+  const sc = v24GetById('chatSc'); if(!sc) return;
+  if(!V24FP.open){ sc.style.paddingTop = ''; return; }
+  const last = sc.lastElementChild; if(!last) return;
+  const cs = getComputedStyle(sc), cur = parseFloat(cs.paddingTop) || 0;
+  if(!sc.style.paddingTop) sc.dataset.v24pt = cur;
+  const base = parseFloat(sc.dataset.v24pt) || 0;
+  const gap = sc.getBoundingClientRect().bottom - (parseFloat(cs.paddingBottom) || 0) - last.getBoundingClientRect().bottom + (cur - base);
+  const want = gap > 1 ? Math.round(base + gap) : base;
+  if(Math.abs(want - cur) > 1) sc.style.paddingTop = want + 'px';
+}
+const V24_FP_HINT = 'Например: только 44-ФЗ, что такое обеспечение?';
+function v24FpHint(){
+  const t = v24GetById('freeIn'); if(!t) return;
+  if(!t.dataset.v24ph) t.dataset.v24ph = t.placeholder;
+  t.placeholder = V24FP.open ? V24_FP_HINT : t.dataset.v24ph;
+}
+function v24FpPaint(){
+  v24FpDom();
+  if(V24FP.open && (S.screen!=='chat' || S.navScreen || S.msEdit)) v24FpClose();
+  v24FpBtnPaint();
+  v24FpHint();
+  v24FpAnchor();
+  if(!V24FP.open) return;
+  const n = (S.panelTray||[]).length;
+  v24GetById('v24fpHead').innerHTML = `<div class="v23ph v24ph"><span class="tt">Фильтры</span><span class="st">${S.busy ? 'Обновляю…' : S.total ? `Сейчас ${fmt(S.total)} ${plural(S.total,'лот','лота','лотов')}` : 'Ничего не найдено, измените фильтры'}${n ? ` · выбрано ${n}, не применено` : ''}</span>${S.busy ? '<span class="v24bar"><i></i></span>' : ''}<span class="sp"></span><button type="button" class="lk" title="Свернуть — черновик сохранится" onclick="v24FpClose()">✕</button></div>`;
+  const body = v24GetById('v24fpBody'), top = body.scrollTop;
+  const scope = V24_FP_SCOPE, chrome = FG.chrome; V24_FP_SCOPE = true; FG.chrome = 76;   /* в панели нет верхней строки с текстом и поиском */
+  try{ body.innerHTML = allFiltersPanelHtml(''); } finally { V24_FP_SCOPE = scope; FG.chrome = chrome; }
+  const t = body.querySelector('.fgtop'); if(t) t.remove();
+  body.querySelectorAll('.fgfoot button').forEach(x=>{ if(/^Свернуть/.test(x.textContent.trim())) x.remove(); });
+  if(S.v23Flash && Date.now() - (S.v23FlashAt||0) < 2500) S.v23Flash.forEach(f=>{
+    const e = body.querySelector(`.crslpill[data-f="${CSS.escape(f)}"]`);
+    if(e){ e.classList.add('v24flash'); e.scrollIntoView({block:'nearest'}); }
+  });
+  const go = body.querySelector('.fgfoot .palgo');
+  if(go){
+    if(S.busy) go.disabled = true;
+    else if(!n && S.total && !S.gridOpen){ go.disabled = false; go.textContent = `Показать ${fmt(S.total)} ${plural(S.total,'лот','лота','лотов')}`; go.setAttribute('onclick', 'v24FpShow()'); }
+  }
+  body.scrollTop = top;
+}
+window.showAllFiltersPanel = function(){ v24FpOpen(); };
+window.openCritModal = function(){ v24FpOpen(); };
+window.v23AqToPanel = function(){ v24FpOpen(); };
+window.v23Collapse = function(){ v24FpClose(); };
+window.v23Expand = function(){ v24FpOpen(); };
+const v24AqChoose = window.aqChoose;
+window.aqChoose = function(v){ if(v==='B'){ if(!S.busy) v24FpOpen(); return; } return v24AqChoose(v); };
+const v24Apply = window.applyFilterPanel;
+window.applyFilterPanel = function(){
+  if(S.busy || !(S.panelTray||[]).length) return;
+  if(S.aqChoice){ S.aqChoice = false; v23ChoiceDone(); }
+  return v24Apply();
+};
+const v24BeginChat = window.beginChat;
+window.beginChat = function(){ v24FpClose(); return v24BeginChat.apply(this, arguments); };
+const v24ShowAll = window.showAllNow;
+window.showAllNow = function(){ v24FpClose(); return v24ShowAll.apply(this, arguments); };
+const v24BackChat = window.v23Back;
+window.v23Back = function(){
+  V24_DRAFT_CHAT = V24FP.open;
+  try{ return v24BackChat.apply(this, arguments); } finally { V24_DRAFT_CHAT = false; }
+};
+/* Вопрос о фильтре: подсвечиваем в панели, о какой пилюле речь. */
+function v24FlashQuestion(q){
+  if(!v23IsQuestion(q)) return;
+  let names = [];
+  try{ names = guessFieldForExplain(q, true); if(!names.length) names = guessFieldForExplain(q); }catch(e){}
+  names = (names||[]).filter(f=>FIELD_DEFS[f]).slice(0, 3);
+  if(names.length){ S.v23Flash = names; S.v23FlashAt = Date.now(); }
+}
+const V24_DRAFT_WORDS = [[/^(?:Добавил в черновик|В черновик):/, 'Отметил в фильтрах:'], [/ Нажмите «Применить», чтобы обновить выдачу\./, ''], [/В черновике:/g, 'Выбрано в панели:'], [/С черновиком \(/g, 'С выбранным ('], [/Черновик пуст\./g, 'В панели ничего не выбрано.'], [/ из черновика/g, ' из выбранного'], [/непримененные фильтры/g, 'неприменённые фильтры']];
+const v24DraftText = t=>V24_DRAFT_WORDS.reduce((s, [a, b])=>s.replace(a, b), String(t||''));
+const v24SayActions = window.sayActions;
+window.sayActions = function(html, acts, extra){ return v24SayActions(v24DraftText(html), acts, extra); };
+const v24Toast = window.toast;
+window.toast = function(t){ return v24Toast(v24DraftText(t).replace('Черновик тоже сброшен', 'Выбранное в панели тоже сброшено')); };
+/* Фильтр, изменённый из чата при закрытой панели: неприменённый выбор по нему уступает. */
+let V24_SIG = null;
+function v24ChatWins(){
+  if(S.screen!=='chat' || S.navScreen || S.msEdit){ V24_SIG = null; return; }
+  const sig = v23FilterSig();
+  if(V24_SIG && (S.panelTray||[]).length) Object.keys(Object.assign({}, sig, V24_SIG)).filter(f=>sig[f]!==V24_SIG[f]).forEach(f=>removeChipByField(f, S.panelTray));
+  V24_SIG = sig;
+}
+const v24NewChat = window.newChat;
+window.newChat = function(){ v24FpClose(); return v24NewChat.apply(this, arguments); };
+document.addEventListener('click', e=>{
+  if(!V24FP.open || !S.fpField || !e.target.closest || e.target.closest('#v24fpBox')) return;
+  S.fpField = null; render();
+});
+document.addEventListener('keydown', e=>{
+  if(e.key!=='Escape' || !V24FP.open) return;
+  if(S.fpField){ S.fpField = null; render(); } else v24FpClose();
+});
+
+/* ---------- 2. варианты ответа в чате ---------- */
+function v24Multi(md, real){ return typeof MULTI_VALUE_FIELDS!=='undefined' && MULTI_VALUE_FIELDS.has(md.field) && real.every(x=>!x.o.f && x.o.o==null); }
+function v24AqOptsHtml(md){
+  const real = md.opts().map((o,i)=>({o, i})).filter(x=>x.o.v!=null);
+  if(real.length <= 3) return `<div class="chiprow aqrow">${real.map(x=>`<button class="chip" onclick="aqAnswer('${md.key}',${x.i})">${esc(x.o.l)}</button>`).join('')}</div>`;
+  const st = S.v24Cl && S.v24Cl.key===md.key ? S.v24Cl : null;
+  const btn = `<div class="chiprow aqrow"><button class="chip v24clbtn ${st?'open':''}" onclick="v24ClOpen('${md.key}')">Выбрать вариант</button></div>`;
+  if(!st) return btn;
+  return btn + `<div class="v24cl">${real.map(x=>`<label><input type="checkbox" ${st.on.includes(x.i)?'checked':''} onchange="v24ClTog(${x.i},this.checked)"><span>${esc(x.o.l)}</span></label>`).join('')}
+    <div class="v24clf"><button type="button" class="ux-act pri" ${st.on.length?'':'disabled'} onclick="v24ClApply()">Применить</button></div></div>`;
+}
+window.v24ClOpen = function(key){ S.v24Cl = S.v24Cl && S.v24Cl.key===key ? null : {key, on:[]}; render(); };
+window.v24ClTog = function(i, on){
+  const st = S.v24Cl, it = st && S.aq && S.aq.items.find(x=>x.key===st.key); if(!it) return;
+  const real = it.m.opts().map((o,k)=>({o, i:k})).filter(x=>x.o.v!=null);
+  if(!on) st.on = st.on.filter(x=>x!==i);
+  else st.on = v24Multi(it.m, real) ? st.on.concat(i) : [i];
   render();
 };
-/* Какие начальные цены есть по запросу, если убрать ограничение по цене. */
-function v23PriceHint(){
-  const i = S.filters.findIndex(r=>r.f==='НМЦ лота'); if(i<0) return '';
-  const ids = computeN(S.filters.filter((_,j)=>j!==i));
-  const xs = ids.map(id=>PROCS_BY_ID.get(id)).map(p=>p && +p.nmck).filter(x=>x>0);
-  if(!xs.length) return '';
-  const lo = Math.min(...xs), hi = Math.max(...xs);
-  return lo===hi ? ` Без ограничения по цене есть лот с начальной ценой ${esc(moneyShort(lo))}.`
-    : ` Без ограничения по цене начальные цены — от ${esc(moneyShort(lo))} до ${esc(moneyShort(hi))}.`;
-}
-const v23WidenActsEdit = window.widenActs;
-window.widenActs = function(list){ return v23FixActs(v23WidenActsEdit(list)); };
-const v23ZeroReasonEdit = window.zeroReason;
-window.zeroReason = function(){
-  const z = v23ZeroReasonEdit();
-  if(!z || !S.filters.length) return z;
-  const acts = v23FixActs(z.acts);
-  const html = acts.some(a=>/v23EditCond/.test(a.c) && /цене/.test(a.l)) ? z.html + v23PriceHint() : z.html;
-  return Object.assign({}, z, {html, acts});
+window.v24ClApply = function(){
+  const st = S.v24Cl, a = S.aq; if(!st || !st.on.length || S.busy || !a) return;
+  const it = a.items.find(x=>x.key===st.key); if(!it) return;
+  S.v24Cl = null;
+  if(st.on.length===1) return aqAnswer(st.key, st.on[0]);
+  const opts = it.m.opts(), picked = st.on.slice().sort((x,y)=>x-y).map(i=>opts[i]);
+  const labels = picked.map(o=>o.l).join(', ');
+  say('me', esc(labels));
+  pushUndo();
+  [it.m.field].concat(it.m.covers||[]).forEach(f=>removeFilterValue(f, null));
+  const row = rowFromOpt(it.m, picked[0]);
+  row.v = [...new Set(picked.flatMap(o=>Array.isArray(o.v) ? o.v : [o.v]))];
+  S.filters.push(row);
+  recomputeWorkingSet();
+  it.status = 'done'; it.val = labels; it.sig = aqSig(it.m.field);
+  render();
+  botThink(()=>aqNext(`Учёл: ${esc(kcVal(labels))}. Сейчас ${countHtml(S.total)}.`), 500);
 };
+const v24MRender = window.mRender;
+window.mRender = function(m, fresh){
+  let h = v24MRender(m, fresh);
+  if(!m.aq || !h || !/chiprow aqrow/.test(h)) return h;
+  const it = S.aq && S.aq.items.find(x=>x.key===m.aq.key);
+  const md = it ? it.m : aqModel(m.aq.key);
+  const any = md.opts().findIndex(o=>o.v==null);
+  return h.replace(/<div class="chiprow aqrow">[\s\S]*?<\/div>(\s*)<div class="aqfoot">/, (x, sp)=>
+    `${v24AqOptsHtml(md)}${sp}<div class="aqfoot">${any>=0 ? `<button type="button" onclick="aqAnswer('${md.key}',${any})">${esc(md.opts()[any].l)}</button><span>·</span>` : ''}`);
+};
+const v24ActionsBlock = window.actionsBlock;
+window.actionsBlock = function(m){
+  const acts = m.acts || [], opt = acts.filter(a=>v23ActKind(a)==='opt');
+  if(opt.length <= 3) return v24ActionsBlock(m);
+  const id = S.chat.indexOf(m), st = S.v24ClA && S.v24ClA.id===id ? S.v24ClA : null;
+  let h = `<div class="ux-opts"><button type="button" class="ux-opt v24clbtn ${st?'open':''}" onclick="v24ActOpen(${id})">Выбрать вариант</button></div>`;
+  if(st) h += `<div class="v24cl">${opt.map((a,i)=>`<label><input type="checkbox" ${st.on===i?'checked':''} onchange="v24ActTog(${i},this.checked)"><span>${a.l}</span></label>`).join('')}
+    <div class="v24clf"><button type="button" class="ux-act pri" ${st.on!=null?'':'disabled'} onclick="v24ActApply()">Применить</button></div></div>`;
+  const rest = acts.filter(a=>!opt.includes(a)).map(a=>Object.assign({}, a, {kind:'link'}));
+  return h + (rest.length ? v24ActionsBlock(Object.assign({}, m, {acts:rest})) : '');
+};
+window.v24ActOpen = function(id){ S.v24ClA = S.v24ClA && S.v24ClA.id===id ? null : {id, on:null}; render(); };
+window.v24ActTog = function(i, on){ if(S.v24ClA){ S.v24ClA.on = on ? i : null; render(); } };
+window.v24ActApply = function(){
+  const st = S.v24ClA; if(!st || st.on==null) return;
+  const m = S.chat[st.id], opt = m && (m.acts||[]).filter(a=>v23ActKind(a)==='opt');
+  const a = opt && opt[st.on];
+  S.v24ClA = null;
+  if(a) (new Function(a.c))();
+};
+/* МСП: в начале диалога не спрашиваем, в наборе вопросов ассистента его нет */
+{ const i = V23_EXTRA_OK.indexOf('МСП / СОНО'); if(i>=0) V23_EXTRA_OK.splice(i, 1); }
+const v24QCands = window.questionCandidates;
+window.questionCandidates = function(){
+  const early = S.chat.filter(m=>m.who==='me').length < 3;
+  return v24QCands().filter(m=>!(early && m.field==='МСП / СОНО'));
+};
+
+/* ---------- 3. стартовый экран: поиск можно начать сразу ---------- */
+if(S.screen==='onboard') S.screen = 'start';
+const V24_LEAD = 'Настоящий умный поиск по всем закупкам на Росэлторге. Ищите по реальной документации, а не только по формальным полям';
+const v24ViewStart = window.viewStart;
+window.viewStart = function(){ return v24ViewStart().replace('</h1>', `</h1><div class="v24lead">${V24_LEAD}</div>`); };
+
+/* ---------- 4. «Мои поиски» ---------- */
+function v24Sync(t){
+  if(!t || !t._init) return t;
+  v24ApplyEnded();
+  t.newIds = t.newIds.filter(id=>v24Active(id) && !V24.done[id]);
+  t.allIds = t.allIds.filter(v24Active);
+  t.unseen = t.newIds.length;
+  return t;
+}
+const v24TplInit = window.tplInit;
+window.tplInit = function(t){
+  const was = t._init;
+  v24TplInit(t);
+  if(!was){
+    const got = V24.arr[t.n] || [];
+    if(got.length){
+      t.arrivals = t.arrivals.filter(id=>!got.includes(id));
+      const known = new Set(t.allIds);
+      t.allIds = got.filter(id=>!known.has(id)).concat(t.allIds);
+      t.newIds = got.concat(t.newIds.filter(id=>!got.includes(id)));
+    }
+    v24Sync(t);
+  }
+  return t;
+};
+window.msUnseen = function(t){ tplInit(t); v24Sync(t); return t.newIds.length; };
+const v24MsList = window.msList;
+window.msList = function(t){ v24Sync(t); return v24MsList(t); };
+window.msOpen = function(i){
+  const t = TEMPLATES[i]; if(!t) return;
+  if(S.msEdit) msEditRestore();
+  tplInit(t);
+  if(S.curTemplate!==t.n) v24Commit();
+  v24Sync(t);
+  S.checked = []; S.msShown = 20;
+  S.curTemplate = t.n; S.msTab = t.newIds.length ? 'new' : 'all'; S.cardOpen = false; S.curProc = null;
+  render();
+};
+const v24MsRefresh = window.msRefresh;
+window.msRefresh = function(n){
+  const t = TEMPLATES.find(x=>x.n===n); if(!t || S.msBusy) return;
+  v24Commit();
+  if(t.arrivals && t.arrivals.length){ V24.arr[n] = (V24.arr[n]||[]).concat(t.arrivals); v24Save(); }
+  return v24MsRefresh(n);
+};
+window.v24MarkAll = function(n){
+  const t = TEMPLATES.find(x=>x.n===n); if(!t) return;
+  t.newIds.forEach(id=>{ V24.seen[id] = 1; V24.done[id] = 1; });
+  v24Save(); v24Sync(t); S.checked = [];
+  toast('Все лоты отмечены как просмотренные');
+  render();
+};
+const v24OpenCard = window.openCard;
+window.openCard = function(id){
+  if(!V24.seen[id]){ V24.seen[id] = 1; v24Save(); }
+  return v24OpenCard(id);
+};
+const v24MsDetail = window.msDetail;
+window.msDetail = function(t){
+  v24Sync(t);
+  const n = t.newIds.length;
+  let h = v24MsDetail(t);
+  const mark = (S.msTab||'new')==='new' && n && !S.msEdit ? `<button class="gbtn v24markall" onclick="v24MarkAll('${jsq(t.n)}')">Отметить все как просмотренные</button>` : '';
+  h = h.replace(/Все лоты(<span[^>]*>[^<]*<\/span>)<\/button>/, 'Все по этому поиску$1</button>')
+       .replace('<button class="gbtn" onclick="msSelectAll()">', mark + '<button class="gbtn" onclick="msSelectAll()">')
+       .replace(/title="Лоты, которые появились после вашего прошлого визита в этот поиск"/, 'title="Лот считается новым, пока вы не откроете его карточку"')
+       .replace('С вашего прошлого визита новых лотов нет.', 'Новых лотов нет.');
+  return h;
+};
+function v24OrigQuery(){
+  const m = S.chat.find(x=>x.who==='me' && x.h);
+  if(!m) return S.query || '';
+  const d = document.createElement('div'); d.innerHTML = m.h;
+  return d.textContent.trim();
+}
+const v24MsSummary = window.msSummary;
+window.msSummary = function(t){ const s = v24MsSummary(t); if(t.v24orig) s.q = t.v24orig; return s; };
+const v24DoSave = window.doSaveTemplate;
+window.doSaveTemplate = function(){
+  const name = (S.saveTplName||'').trim(), orig = v24OrigQuery();
+  v24DoSave();
+  const t = TEMPLATES.find(x=>x.n===name);
+  if(t && name){ t.v24orig = orig; t.v24user = true; }
+  render();
+};
+function v24SaveMs(){
+  const list = TEMPLATES.filter(t=>t.v24user).map(t=>({n:t.n, c:t.c, rules:t.rules, orig:t.v24orig}));
+  const s = JSON.stringify(list);
+  if(s!==JSON.stringify(V24.saved)){ V24.saved = list; v24Save(); }
+}
+V24.saved.slice().reverse().forEach(x=>{
+  if(!TEMPLATES.some(t=>t.n===x.n)) TEMPLATES.unshift({n:x.n, c:x.c, d:'Сегодня', rules:x.rules, v24orig:x.orig, v24user:true});
+});
+const v24ViewTemplates = window.viewTemplates;
+window.viewTemplates = function(){
+  let k = 0;
+  return v24ViewTemplates().replace(/<div class="fs">[^<]*<\/div>/g, x=>{
+    const t = TEMPLATES[k++]; if(!t) return x;
+    const sm = msSummary(t);
+    return `<div class="v24ms2"><b>Запрос:</b> ${esc(sm.q || 'не указан')}</div><div class="v24ms2"><b>Фильтры:</b> ${sm.vals.length ? esc(sm.vals.join(' · ')) : 'не заданы'}</div>`;
+  });
+};
+
+/* ---------- 5. карточка лота ---------- */
+let V24_FMT = false;
+const V24_NOFMT = ['ИНН заказчика','Категория ОКПД 2','Заказчик','Место поставки','Окончание приема заявок'];
+function v24Num(s){ return parseFloat(String(s).replace(/[\s ]/g,'').replace(',', '.')); }
+function v24FmtVal(name, v){
+  if(v==null) return v;
+  const s = String(v).trim(); let m;
+  if(V24_NOFMT.includes(name)) return v;
+  if((m = /^(-?\d[\d\s ]*(?:[.,]\d+)?)\s*₽$/.exec(s))){
+    const n = v24Num(m[1]), frac = n % 1 !== 0;
+    return n.toLocaleString('ru-RU', {minimumFractionDigits:frac?2:0, maximumFractionDigits:2}) + ' ' + (frac ? 'рубля' : plural(n,'рубль','рубля','рублей'));
+  }
+  if((m = /^(\d[\d\s ]*(?:[.,]\d+)?)\s*%$/.exec(s))) return v24Num(m[1]).toLocaleString('ru-RU') + '%';
+  if((m = /^(\d+)\s*дн\.\s*назад$/.exec(s))){ const n = +m[1]; return `${fmt(n)} ${plural(n,'день','дня','дней')} назад`; }
+  if((m = /^(\d+)\s*дн\.?$/.exec(s))){ const n = +m[1]; return `${fmt(n)} ${plural(n,'день','дня','дней')}`; }
+  if((m = /^(\d[\d\s ]*(?:[.,]\d+)?)\s+([^\d].*)$/.exec(s))) return `${v24Num(m[1]).toLocaleString('ru-RU')} ${m[2]}`;
+  if(/^\d{4,}$/.test(s)) return (+s).toLocaleString('ru-RU');
+  return v;
+}
+const v24CritVal = window.critValueOnProc;
+window.critValueOnProc = function(name, p){ const v = v24CritVal(name, p); return V24_FMT ? v24FmtVal(name, v) : v; };
+const v24FieldLabel = window.fieldLabel;
+window.fieldLabel = function(name){
+  const l = v24FieldLabel(name);
+  return V24_FMT ? String(l).replace(/,\s*(₽|%|руб\.?|дн\.?|дней)\s*$/i, '').replace(/\s*\((₽|%|руб\.?|в рублях|в процентах|дн\.?|дней)\)/gi, '').replace(/:\s*процент$/i, '') : l;
+};
+const v24Dual = window.v23Dual;
+window.v23Dual = function(p, f){
+  const d = v24Dual(p, f);
+  return V24_FMT && d ? Object.assign({}, d, {doc:v24FmtVal(f, d.doc), etp:d.etp==null ? d.etp : v24FmtVal(f, d.etp)}) : d;
+};
+/* Фильтры лота: в «Моих поисках» — фильтры этого поиска, а не текущего чата. */
+function v24CardCtx(fn){
+  const t = S.navScreen==='templates' && S.curTemplate && TEMPLATES.find(x=>x.n===S.curTemplate);
+  const saved = S.filters;
+  const inbox = S.navScreen==='folders';
+  if(t) S.filters = t.rules.filter(r=>r.f!=='Запрос' && FIELD_DEFS[r.f]);
+  else if(inbox) S.filters = [];
+  const was = V24_FMT; V24_FMT = true;
+  try{ return fn(); } finally { V24_FMT = was; S.filters = saved; }
+}
+const v24CardRow = window.v23CardRow;
+window.v23CardRow = function(p, pd, f){
+  const r = v24CardRow(p, pd, f);
+  return r || (S.filters.some(x=>x.f===f) ? `<tr><td>${esc(fieldLabel(f))}</td><td><span class="v24na">не указано</span></td></tr>` : '');
+};
+const V24_IC_SEND = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 5l7 6-7 6v-3.5c-5 0-8.5 1.5-11 5 1-5.5 4-9.5 11-10.5z"/></svg>';
+const V24_DOC_MAX = 6;
+function v24DocList(p, pd){
+  const inDoc = f=>DOC_CRITERIA_FIELDS.includes(f) || V23_DUAL.includes(f);
+  const chosen = S.filters.map(r=>r.f).filter((f,i,a)=>f && a.indexOf(f)===i && inDoc(f));
+  const val = f=>{ const d = v23DualOf(p, f); return d ? d.doc : critValueOnProc(f, pd); };
+  const rest = DOC_CRITERIA_FIELDS.filter(f=>!chosen.includes(f) && val(f)!=null).slice(0, Math.max(0, V24_DOC_MAX - chosen.length));
+  const li = f=>{
+    const d = v23DualOf(p, f), v = val(f);
+    return `<li>${esc(fieldLabel(f))}: ${v!=null ? esc(String(v).replace(/\.$/, '')) : '<span class="v24na">в документации не указано</span>'}. Источник: ${docSourceCell(f)}${v23EtpMark(d)}</li>`;
+  };
+  return `<div class="dt">Критерии из документации <span class="spark"></span></div><ul>${chosen.concat(rest).map(li).join('')}</ul>`;
+}
+const v24ViewCard = window.viewCard;
+window.viewCard = function(){
+  const self = this, args = arguments;
+  return v24CardCtx(()=>{
+    let h = v24ViewCard.apply(self, args);
+    const p = S.curProc; if(!p || !h) return h;
+    const pd = displayProc(p);
+    h = h.replace(/<div class="dt">[\s\S]*?(?=<span class="allcrit")/, v24DocList(p, pd))
+         .replace(/<span class="allcrit"([^>]*)>[^<]*<\/span>/, '<span class="allcrit"$1>Посмотреть все критерии из документации</span>')
+         .replace(/(<a class="regn[\s\S]*?<\/a>)/, `$1<button type="button" class="v24send" title="Скопировать ссылку на извещение" onclick="event.stopPropagation();v24SendLot()">${V24_IC_SEND}Отправить</button>`)
+         .replace(/<button class="sqb"[^>]*onclick="toast\('Отправка коллеге'\)"[^>]*>[\s\S]*?<\/button>/, '');
+    return h;
+  });
+};
+window.v24SendLot = function(){ const p = S.curProc; if(p) v24Copy(v23ProcUrl(displayProc(p))); };
+const v24AllCrit = window.openM_allcrit;
+window.openM_allcrit = function(){ const self = this, args = arguments; return v24CardCtx(()=>v24AllCrit.apply(self, args)); };
+
+/* ---------- 6. передача подборки и «Входящие» ---------- */
+/* Демо-лоты запроса не зависят от порядка поисков в сессии: у отправителя и
+   получателя по одному номеру открывается один и тот же лот. */
+const V24_LOTQ = {};
+const v24GenQuery = window.genQueryProcs;
+window.genQueryProcs = function(q){
+  const key = String(q||'').toLowerCase();
+  if(!key || QUERY_PROC_CACHE.has(key)) return v24GenQuery(q);
+  const seq = _pcSeq, cust = _custCursor, h = hashStr('v24|' + key) >>> 0;
+  _pcSeq = 1000000 + (h % 9000000) * 10; _custCursor = h % CUSTOMERS.length;
+  const ids = v24GenQuery(q);
+  _pcSeq = seq; _custCursor = cust;
+  ids.forEach(id=>{ V24_LOTQ[id] = q; });
+  return ids;
+};
+const V24_TTL = 7*86400000;
+function v24Enc(o){ return btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
+function v24Dec(s){ try{ return JSON.parse(decodeURIComponent(escape(atob(String(s).replace(/-/g,'+').replace(/_/g,'/'))))); }catch(e){ return null; } }
+function v24Link(ids, exp, qs){ return location.href.split('#')[0] + '#share=' + v24Enc({ids, exp, qs}); }
+function v24Queries(ids){ return [...new Set(ids.map(id=>V24_LOTQ[id]).filter(Boolean))]; }
+window.v24Share = function(){
+  const ids = S.checked.slice(); if(!ids.length) return;
+  v24Remember(ids);
+  const exp = Date.now() + V24_TTL, link = v24Link(ids, exp, v24Queries(ids));
+  V24.lastLink = link; v24Save();
+  S.v24Dlg = {link, n:ids.length, exp};
+  render();
+};
+window.v24CloseDlg = function(){ S.v24Dlg = null; render(); };
+window.v24CopyLink = function(){ if(S.v24Dlg) v24Copy(S.v24Dlg.link); };
+function v24Accept(pl){
+  (pl.qs||[]).forEach(q=>{ try{ rankMatches(q); }catch(e){} });
+  V24.qs = [...new Set(V24.qs.concat(pl.qs||[]))];
+  const now = Date.now();
+  (pl.ids||[]).filter(v24Ensure).forEach(id=>{
+    const it = V24.inbox.find(x=>x.id===id);
+    if(it) it.at = now; else V24.inbox.push({id, at:now});
+  });
+  V24.inboxOn = true;   /* папка «Входящие» появляется с первой присланной ссылкой */
+  v24Remember((pl.ids||[]).filter(id=>PROCS_BY_ID.has(id)));
+  v24Save();
+  S.v24Gate = null; S.v24Dlg = null; S.checked = [];
+  if(S.screen==='landing' || S.screen==='onboard') S.screen = 'start';
+  S.navScreen = 'folders'; S.v24Inbox = true; S.curFolder = null; S.curTemplate = null; S.cardOpen = false; S.curProc = null;
+}
+function v24OpenPayload(pl, as){
+  if(!pl || !(pl.exp > Date.now())){ S.v24Gate = {t:'expired'}; return; }
+  if(as ? as==='guest' : !V24.auth){ S.v24Gate = {t:'login', pl, mode:'login'}; return; }
+  v24Accept(pl);
+}
+window.v24GateMode = function(m){ if(S.v24Gate){ S.v24Gate.mode = m; render(); } };
+window.v24GateSubmit = function(){
+  const g = S.v24Gate; if(!g || !g.pl) return;
+  V24.auth = true; v24Save();
+  v24Accept(g.pl);
+  render();
+};
+window.v24GateHome = function(){ S.v24Gate = null; S.navScreen = null; S.v24Inbox = false; if(S.screen==='landing' || S.screen==='onboard') S.screen = 'start'; render(); };
+function v24Hash(){
+  const m = /^#share=([^&]+)/.exec(location.hash||''); if(!m) return false;
+  const pl = v24Dec(m[1]);
+  history.replaceState(null, '', location.pathname + location.search);
+  v24OpenPayload(pl);
+  return true;
+}
+window.addEventListener('hashchange', ()=>{ if(v24Hash()) render(); });
+V24.qs.forEach(q=>{ try{ rankMatches(q); }catch(e){} });   /* те же демо-лоты, что были при получении ссылки */
+V24.inbox.forEach(x=>v24Ensure(x.id));   /* счётчик на «Избранном» нужен сразу после загрузки */
+v24Hash();
+
+const v24Go = window.go;
+window.go = function(s){
+  if(s==='inbox'){
+    v24ApplyEnded();
+    S.v24Inbox = true; S.navScreen = 'folders'; S.folderTab = 'active'; S.curFolder = null; S.curTemplate = null; S.templateEdit = false;
+    S.cardOpen = false; S.curProc = null; S.checked = [];
+    return render();
+  }
+  S.v24Inbox = false;
+  return v24Go(s);
+};
+const V24_INBOX_NAME = 'Входящие';
+function v24InboxItems(){
+  v24ApplyEnded();
+  const dir = S.v24Old ? 1 : -1;
+  return V24.inbox.filter(x=>v24Ensure(x.id) && (!S.v24Hide || v24Active(x.id))).sort((a,b)=>dir*(a.at-b.at) || (a.id<b.id?-1:1));
+}
+function v24When(at){ return new Date(at).toLocaleString('ru-RU', {day:'numeric', month:'long', hour:'2-digit', minute:'2-digit'}); }
+window.v24InboxAll = function(){ const ids = v24InboxItems().map(x=>x.id); S.checked = ids.length && ids.every(id=>S.checked.includes(id)) ? [] : ids; render(); };
+window.v24InboxDel = function(){
+  const set = new Set(S.checked);
+  V24.inbox = V24.inbox.filter(x=>!set.has(x.id));
+  if(S.curProc && set.has(S.curProc.id)){ S.cardOpen = false; S.curProc = null; }
+  const n = S.checked.length; S.checked = []; v24Save();
+  toast(`Удалено: ${fmt(n)}`);
+  render();
+};
+function v24InboxHtml(){
+  const items = v24InboxItems(), allSel = items.length && items.every(x=>S.checked.includes(x.id));
+  const rows = items.map(x=>`<div class="v24add">Добавлено ${v24When(x.at)}</div>${prow(PROCS_BY_ID.get(x.id))}`).join('');
+  const n = S.checked.length;
+  const bulk = n ? `<div class="v23bulk" onclick="event.stopPropagation()"><div class="v23bb">
+      <button type="button" class="bact" onclick="v24InboxMove()">${V23I.folder}Переместить</button>
+      <button type="button" class="bact" onclick="v24Export()">${V23I.down}Выгрузить</button>
+      <button type="button" class="bact" onclick="v24Share()">${V23I.share}Отправить</button>
+      <button type="button" class="bact" onclick="v24InboxDel()">${V23I.trash}Удалить</button>
+      <span class="sp"></span><span class="bcnt">Выбрано ${fmt(n)}</span>
+      <button type="button" class="bx" title="Снять выбор" onclick="S.checked=[];render()">✕</button></div></div>` : '';
+  return `<div class="gcol v23g v24ib" style="width:auto;flex:1">
+      <div class="gh">
+        <div class="gh1"><button class="x" title="Закрыть" onclick="v24InboxClose()">✕</button><span class="t">${V24_INBOX_NAME}</span><span class="c num">${fmt(items.length)}</span></div>
+        <div class="gh2">
+          <button class="gbtn" onclick="S.v24Old=!S.v24Old;render()"><span class="gi">${V23I.sort}</span>${S.v24Old ? 'Сначала старые' : 'Сначала свежие'}</button>
+          <label class="v24hide"><input type="checkbox" ${S.v24Hide?'checked':''} onchange="S.v24Hide=this.checked;S.checked=[];render()">Скрыть завершённые</label>
+          <button class="gbtn" style="margin-left:auto" onclick="v24InboxAll()">${allSel ? 'Снять выбор' : 'Выбрать все'}</button>
+        </div>
+      </div>
+      <div class="gsc">${rows || `<div class="v24ibe">${S.v24Hide ? 'Все лоты в папке завершены.' : 'В папке пока ничего нет. Здесь появятся лоты, которые вам отправят по ссылке.'}</div>`}</div>
+      ${bulk}
+    </div>`;
+}
+window.v24InboxClose = function(){ S.v24Inbox = false; S.checked = []; S.cardOpen = false; S.curProc = null; render(); };
+const V24_INBOX_MOVE = '__inbox__';
+window.v24InboxMove = function(){ S.v23MoveFrom = V24_INBOX_MOVE; openSaveModal(S.checked.slice()); };
+const v24DoSaveFolder = window.doSave;
+window.doSave = function(navigate){
+  const fromInbox = S.v23MoveFrom===V24_INBOX_MOVE, ids = (S.saveIds||[]).slice();
+  v24DoSaveFolder(navigate);
+  if(!fromInbox || S.saveModalOpen) return;
+  const set = new Set(ids);
+  V24.inbox = V24.inbox.filter(x=>!set.has(x.id));
+  if(S.curProc && set.has(S.curProc.id)){ S.cardOpen = false; S.curProc = null; }
+  S.checked = []; v24Save();
+  render();
+};
+const v24OpenFolder = window.openFolder;
+window.openFolder = function(){ S.v24Inbox = false; S.checked = []; return v24OpenFolder.apply(this, arguments); };
+const v24FoldersList = window.viewFoldersList;
+window.viewFoldersList = function(narrow){
+  let h = v24FoldersList(narrow);
+  if(!V24.inboxOn || S.folderTab==='archive') return h;
+  const last = V24.inbox.reduce((m, x)=>Math.max(m, x.at), 0);
+  const d = !last ? '' : new Date(last).toDateString()===new Date().toDateString() ? 'Сегодня' : new Date(last).toLocaleDateString('ru-RU', {day:'numeric', month:'long'});
+  const row = `<div class="v23frow v24ibrow ${S.v24Inbox?'on':''}" onclick="go('inbox')">
+      <span class="fic">${V23_FOLDER_PIC}</span><span class="fn" title="${V24_INBOX_NAME}">${V24_INBOX_NAME}</span>
+      <span class="fc">${V23I.markSm}${fmt(V24.inbox.length)}</span>${S.cardOpen ? '' : `<span class="fd">${d}</span>`}</div>`;
+  return h.replace('<div class="flist">', '<div class="flist">' + row);
+};
+const v24ViewFolders = window.viewFolders;
+window.viewFolders = function(){
+  if(S.v24Inbox && S.folderTab==='archive') S.v24Inbox = false;
+  if(!S.v24Inbox) return v24ViewFolders.apply(this, arguments);
+  v23SeedFav();
+  return `<div style="display:flex;flex-direction:row;overflow:hidden;flex:1;min-width:0">${viewFoldersList(true)}${v24InboxHtml()}${S.cardOpen && S.curProc ? viewCard() : ''}</div>`;
+};
+const v24RenderNav = window.renderNav;
+window.renderNav = function(){
+  const r = v24RenderNav.apply(this, arguments);
+  const el = v24GetById('navSc'); if(!el) return r;
+  const fav = el.querySelector(`[onclick="go('folders')"]`);
+  if(fav){
+    const n = V24.inbox.filter(x=>!V24.seen[x.id] && v24Active(x.id)).length;
+    let bd = fav.querySelector('.v24ibn');
+    if(n && !bd){ fav.insertAdjacentHTML('beforeend', '<span class="nbadge v24ibn" title="Присланные лоты, которые вы ещё не открывали"></span>'); bd = fav.querySelector('.v24ibn'); }
+    if(n) bd.textContent = '+' + n; else if(bd) bd.remove();
+  }
+  return r;
+};
+
+/* Отправить и Выгрузить в панелях выбора */
+function v24BulkFix(h){
+  return String(h)
+    .replace(/<button type="button" class="bsq" title="Отправить коллеге" onclick="toast\('Отправка коллеге'\)">([\s\S]*?)<\/button>/g, '<button type="button" class="bact" onclick="v24Share()">$1Отправить</button>')
+    .replace(/<button type="button" class="bsq" title="Выгрузить в файл" onclick="toast\('Выгрузка файла'\)">([\s\S]*?)<\/button>/g, '<button type="button" class="bact" onclick="v24Export()">$1Выгрузить</button>')
+    .replace(/onclick="toast\('Выгрузка файла'\)"/g, 'onclick="v24Export()"');
+}
+['bulkLive','v23BulkHtml','bulkFolder'].forEach(fn=>{
+  const old = window[fn]; if(typeof old!=='function') return;
+  window[fn] = function(){ return v24BulkFix(old.apply(this, arguments)); };
+});
+
+/* ---------- 7. выгрузка в CSV ---------- */
+function v24Csv(s){ return '"' + String(s==null ? '' : s).replace(/"/g, '""') + '"'; }
+window.v24Export = function(){
+  const ps = S.checked.map(id=>PROCS_BY_ID.get(id)).filter(Boolean).map(p=>displayProc(p));
+  if(!ps.length) return;
+  const head = ['Номер','Наименование','Заказчик','Сумма','Срок окончания приёма заявок','Ссылка на извещение'];
+  const rows = ps.map(p=>[p.id, p.n, p.cust, p.nmck==null ? '' : String(p.nmck).replace('.', ','), p.end, v23ProcUrl(p)]);
+  const csv = '﻿' + [head].concat(rows).map(r=>r.map(v24Csv).join(';')).join('\r\n');
+  const url = URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8'}));
+  const a = document.createElement('a'); a.href = url; a.download = `lots_${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 2000);
+  toast(`Выгружено лотов: ${fmt(ps.length)}`);
+};
+
+/* ---------- 8. ожидание ответа ---------- */
+const V24_TIMEOUT_MS = 30000, V24_TIMEOUT_DEMO_MS = 5000, V24_SLIDE_MS = 1500;
+window.typing = function(){
+  return `<div class="typing v24wait"><span class="v24bar"><i style="animation-delay:${-(Date.now() % V24_SLIDE_MS)}ms"></i></span>Анализирую запрос…</div>`;
+};
+let v24BusyTimer = null;
+function v24Watch(){
+  if(S.busy && !v24BusyTimer) v24BusyTimer = setTimeout(()=>{ v24BusyTimer = null; if(S.busy) v24Fail(); }, S.v24HangOn ? V24_TIMEOUT_DEMO_MS : V24_TIMEOUT_MS);
+  else if(!S.busy && v24BusyTimer){ clearTimeout(v24BusyTimer); v24BusyTimer = null; }
+}
+function v24Fail(){
+  S.busy = false; S.v24HangOn = false;
+  sayActions('Сервис не ответил вовремя. Попробуйте ещё раз.', S.v24Last ? [{l:'Повторить', c:'v24Retry()', kind:'pri'}] : [], {v24err:true});
+  render();
+}
+const v24HUM = window.handleUserMessage;
+window.handleUserMessage = async function(text, chips){
+  if(String(text||'').trim() || (chips && chips.length)) S.v24Last = {text, chips};
+  if(S.v24HangNext){
+    S.v24HangNext = false; S.v24HangOn = true;
+    if(String(text||'').trim()) say('me', esc(String(text).trim()));
+    S.busy = true; render();
+    return;
+  }
+  const typed = String(text||'').trim();
+  if(V24FP.open && typed){ S.v24TypeFocus = true; v24FlashQuestion(typed); }
+  V24_DRAFT_CHAT = V24FP.open;
+  try{ return v24HUM(text, chips); } finally { V24_DRAFT_CHAT = false; }
+};
+window.v24Retry = function(){
+  const L = S.v24Last; if(S.busy || !L) return;
+  const i = S.chat.findIndex(m=>m.v24err); if(i>=0) S.chat.splice(i, 1);
+  const t = String(L.text||'').trim();
+  if(t) for(let k = S.chat.length-1; k>=0; k--){ const m = S.chat[k]; if(m.who==='me'){ if(m.h===esc(t)) S.chat.splice(k, 1); break; } }
+  handleUserMessage(L.text, L.chips);
+};
+
+/* ---------- 9. главная страница Росэлторга ---------- */
+window.v24FromLanding = function(){ S.screen = 'start'; S.navScreen = null; render(); };
+const v24ViewLanding = window.viewLanding;
+window.viewLanding = function(){
+  return v24ViewLanding().replace('<b>Умный поиск с ИИ</b>', '<b>Попробуйте умный поиск</b>').replace(/goOnboard\(\)/g, 'v24FromLanding()');
+};
+
+/* ---------- демо-состояния ---------- */
+function v24DemoPayload(expired){
+  const last = V24.lastLink && v24Dec(V24.lastLink.split('#share=')[1]);
+  const ids = last ? last.ids : PROCS.filter(p=>v24Active(p.id)).slice(0, 3).map(p=>p.id);
+  return {ids, qs:last ? last.qs : [], exp:expired ? Date.now()-1000 : Date.now()+V24_TTL};
+}
+window.v24DemoToggle = function(){ S.v24DemoOpen = !S.v24DemoOpen; render(); };
+window.v24DemoLink = function(mode){
+  S.v24DemoOpen = false; S.v24Dlg = null;
+  if(mode==='expired') S.v24Gate = {t:'expired'};
+  else v24OpenPayload(v24DemoPayload(false), mode);
+  render();
+};
+window.v24DemoHang = function(){ S.v24DemoOpen = false; S.v24HangNext = true; toast('Отправьте сообщение в чат: ответ не придёт, через 5 секунд появится ошибка'); render(); };
+window.v24DemoLanding = function(){ S.v24DemoOpen = false; S.screen = 'landing'; S.navScreen = null; render(); };
+window.v24DemoEnd = function(){
+  S.v24DemoOpen = false;
+  let id = null;
+  const t = S.navScreen==='templates' && S.curTemplate && TEMPLATES.find(x=>x.n===S.curTemplate);
+  if(t){ const l = msList(t); id = l.length ? l[0].id : null; }
+  else if(S.v24Inbox){ const x = v24InboxItems().find(x=>v24Active(x.id)); id = x ? x.id : null; }
+  if(!id){ toast('Откройте сохранённый поиск или папку «Входящие» с активными лотами'); return render(); }
+  V24.ended[id] = 1; v24Save(); v24ApplyEnded();
+  if(t) v24Sync(t);
+  toast(`Лот ${id} завершён`);
+  render();
+};
+function v24LayerHtml(){
+  let h = '';
+  const d = S.v24Dlg;
+  if(d) h += `<div class="v24bg" onclick="if(event.target===this)v24CloseDlg()"><div class="v24dlg">
+    <h3><span>Ссылка на ${fmt(d.n)} ${plural(d.n,'лот','лота','лотов')}</span><button type="button" title="Закрыть" onclick="v24CloseDlg()">✕</button></h3>
+    <p>Ссылка действует 7 дней, до ${new Date(d.exp).toLocaleDateString('ru-RU',{day:'numeric',month:'long'})}. Получатель сразу увидит лоты в «Избранном», в папке «Входящие».</p>
+    <div class="v24link"><input type="text" readonly value="${esc(d.link)}" onclick="this.select()"><button type="button" class="v24pri" onclick="v24CopyLink()">Копировать</button></div></div></div>`;
+  if(S.v24DemoOpen) h += `<div id="v24DemoM" onclick="event.stopPropagation()">
+    <div class="h">Ссылка на подборку</div>
+    <button type="button" onclick="v24DemoLink('user')">Открыть как авторизованный получатель</button>
+    <button type="button" onclick="v24DemoLink('guest')">Открыть как неавторизованный получатель</button>
+    <button type="button" onclick="v24DemoLink('expired')">Открыть просроченную ссылку</button>
+    <div class="h">Состояния</div>
+    <button type="button" onclick="v24DemoEnd()">Завершить первый лот в открытом списке</button>
+    <button type="button" onclick="v24DemoHang()">Таймаут: следующий ответ не придёт</button>
+    <button type="button" onclick="v24DemoLanding()">Главная страница Росэлторга</button></div>`;
+  return h;
+}
+function v24GateHtml(){
+  const g = S.v24Gate; if(!g) return '';
+  if(g.t==='expired') return `<div class="v24dlg"><h3><span>Ссылка устарела, попросите отправить новую</span></h3><p>Ссылка на подборку действует 7 дней.</p><button type="button" class="v24pri" onclick="v24GateHome()">Перейти в умный поиск</button></div>`;
+  const reg = g.mode==='reg';
+  return `<div class="v24dlg"><h3><span>Умный поиск</span></h3><p>Войдите, чтобы увидеть отправленные вам лоты.</p>
+    <div class="v24tabs"><button type="button" class="${reg?'':'on'}" onclick="v24GateMode('login')">Вход</button><button type="button" class="${reg?'on':''}" onclick="v24GateMode('reg')">Регистрация</button></div>
+    ${reg ? '<label>Название компании<input type="text" value="ООО «Поставщик»"></label>' : ''}
+    <label>Эл. почта<input type="text" value="demo@example.ru"></label>
+    <label>Пароль<input type="password" value="demo-password"></label>
+    <button type="button" class="v24pri" onclick="v24GateSubmit()">${reg ? 'Зарегистрироваться' : 'Войти'}</button></div>`;
+}
+function v24LayersPaint(){
+  let l = v24GetById('v24Layer');
+  if(!l){ document.body.insertAdjacentHTML('beforeend', '<div id="v24Layer"></div><div id="v24Gate" style="display:none"></div>'); l = v24GetById('v24Layer'); }
+  const html = v24LayerHtml();
+  if(l.dataset.h!==html){ l.dataset.h = html; l.innerHTML = html; }
+  const g = v24GetById('v24Gate'), gh = v24GateHtml();
+  g.style.display = gh ? '' : 'none';
+  if(g.dataset.h!==gh){ g.dataset.h = gh; g.innerHTML = gh; }
+  const foot = document.querySelector('.navfoot');
+  if(foot && !foot.querySelector('.v24demob')){
+    const learn = foot.querySelector('.v23learn');
+    const b = `<button type="button" class="v24demob" title="Демо-состояния" onclick="event.stopPropagation();v24DemoToggle()"><span class="ic">${V24_IC_DEMO}</span><span class="tx">Демо-состояния</span></button>`;
+    if(learn) learn.insertAdjacentHTML('afterend', b); else foot.insertAdjacentHTML('afterbegin', b);
+  }
+}
+document.addEventListener('click', ()=>{ if(S.v24DemoOpen){ S.v24DemoOpen = false; render(); } });
+
+const v24Render = window.render;
+window.render = function(){
+  const scope = V24_FP_SCOPE, draft = V24_DRAFT_CHAT; V24_FP_SCOPE = false; V24_DRAFT_CHAT = false;   /* сама отрисовка чата работает с настоящим #chatSc и обычным полем ввода */
+  v24ChatWins();
+  let r;
+  try{ r = v24Render.apply(this, arguments); } finally { V24_FP_SCOPE = scope; V24_DRAFT_CHAT = draft; }
+  v24FpPaint();
+  if(V24FP.open && S.v24TypeFocus && !S.busy && !S.fpField && typeof focusComposer==='function') focusComposer();
+  v24LayersPaint();
+  v24SaveMs();
+  v24Watch();
+  return r;
+};
+
+/* Режим обучения: панель теперь поверх чата, мини-чата в ней нет */
+(function(){
+  const drop = ['Можно писать в чат','И вопросы тоже'];
+  for(let i = TUT_STEPS.length-1; i>=0; i--) if(drop.includes(TUT_STEPS[i].t)) TUT_STEPS.splice(i, 1);
+  const by = t=>TUT_STEPS.find(s=>s.t===t);
+  const w = by('Значение — в черновике');
+  if(w){ w.t = 'Значение выбрано'; w.d = 'Фильтр подсвечен жёлтым: он выбран, но поиск ещё не обновлён. Наверху панели видно, сколько лотов сейчас и сколько фильтров ещё не применено.'; }
+  const f = by('Блок фильтров');
+  if(f) f.d = String(f.d).replace('попадает в <b>черновик</b> (подсвечено жёлтым) и применяется одной кнопкой', 'подсвечивается жёлтым и применяется одной кнопкой');
+  const k = by('Команда словами');
+  if(k){ k.el = '#freeIn'; k.place = 'above'; k.d = 'Пока панель открыта, можно писать в обычное поле чата. Команда «только с авансом» сразу отмечает фильтр в панели, а ответ ассистента виден под ней.<br><br><b>Аванс</b> — часть оплаты до начала поставки: удобно, если товар нужно закупить заранее на свои деньги.'; }
+  const a = by('Применить');
+  if(a){ a.el = '.fgfoot .palgo'; a.d = 'Когда всё выбрано — «Применить». Поиск обновится один раз сразу со всеми фильтрами, панель останется открытой.<br><br>Крестик вверху или кнопка слева убирают панель обратно, выбор сохранится.'; }
+  const c = by('Ответ стал фильтром');
+  if(c) c.pre = async()=>{
+    const q = S.aq, it = q && q.items.find(x=>x.key===q.cur);
+    if(it){ const o = it.m.opts(); let i = o.findIndex(x=>/1.?5 млн/.test(x.l)); if(i<0) i = o.findIndex(x=>x.v!=null); if(i>=0) aqAnswer(it.key, i); }
+    await tutIdle(); await TUT_W(300);
+  };
+  const d = by('Новые и все лоты');
+  if(d) d.d = '<b>«Новые»</b> — лоты, карточку которых вы ещё не открывали. После открытия карточки и обновления страницы лот переходит в <b>«Все по этому поиску»</b>. Завершённые лоты исчезают из обоих списков.';
+})();
+</script>
+<style>
+/* 10.11.2026: связка чата и панели — общие правила из UX-исследования */
+.vxai{position:absolute;top:-7px;right:8px;z-index:3;font-size:10px;line-height:14px;font-weight:600;color:#5B3FD6;background:#E6E6FA;border-radius:4px;padding:0 5px;pointer-events:none}
+#v24fpBox .crslpill{position:relative}
+</style>
+<script>
+/* =====================================================================
+   Правила связки чата и панели из UX-исследования (09.11.2026): квитанция
+   с «было — стало», метка «ассистент» на фильтре, отмена всего ответа,
+   уточнения при неоднозначной фразе, конфликты с ручным выбором.
+   ===================================================================== */
+S.vxAI = {}; S.vxUndo = {}; S.vxPend = {};
+let VX_SEQ = 0, VX_CHAT = false;
+const vxFgSet = window.fgSetRow;
+window.fgSetRow = function(n, r){
+  const out = vxFgSet.apply(this, arguments);
+  if(VX_CHAT) S.vxAI[n] = 1; else delete S.vxAI[n];
+  return out;
+};
+const vxApply = window.applyFilterPanel;
+window.applyFilterPanel = function(){ if((S.panelTray||[]).length && !S.busy) S.vxAI = {}; return vxApply.apply(this, arguments); };
+const vxSig = r=>r ? JSON.stringify([r.o, valList(r.v).map(String).sort()]) : '';
+const vxLabel = (f, r)=>r ? fgValueLabels(f, r).join(', ') : '';
+function vxPriceConflict(f, cur, op, v){
+  if(f!=='НМЦ лота' || !cur || !/^\d+$/.test(String(cur.v)) || !/^\d+$/.test(String(v))) return false;
+  const a = +cur.v, b = +v;
+  return (cur.o==='Меньше' && op==='Больше' && b>=a) || (cur.o==='Больше' && op==='Меньше' && b<=a);
+}
+function vxPut(f, row){
+  const prev = (S.panelTray||[]).find(c=>c.field===f);
+  VX_CHAT = true;
+  try{ fgSetRow(f, row); } finally { VX_CHAT = false; }
+  return prev ? JSON.parse(JSON.stringify(prev)) : null;
+}
+function vxApplyOps(parsed, snap){
+  const out = {lines:[], undo:[], conflict:null, kept:[], fields:[]};
+  (parsed.ops||[]).forEach(o=>{
+    const def = FIELD_DEFS[o.f]; if(!def) return;
+    const op = o.o || def.ops[0], cur = fxCurRow(o.f);
+    if(vxSig(cur)!==snap(o.f)){ out.kept.push({f:o.f, o:op, v:o.v, ex:o.exclusive}); return; }
+    if(vxPriceConflict(o.f, cur, op, o.v)){ out.conflict = {f:o.f, cur, o:op, v:o.v}; return; }
+    let v = o.v;
+    if(!o.exclusive && cur && cur.o===op && Array.isArray(def.values) && MULTI_VALUE_FIELDS.has(o.f)){ v = [...new Set(valList(cur.v).concat(valList(o.v)))]; if(v.length===1) v = v[0]; }
+    const before = vxLabel(o.f, cur);
+    out.undo.push([o.f, vxPut(o.f, {o:op, v})]);
+    const after = vxLabel(o.f, fxCurRow(o.f));
+    out.fields.push(o.f);
+    out.lines.push(before && before!==after ? `${esc(fgLabel(o.f))}: было ${esc(before)}, стало <b>${esc(after)}</b>` : `${esc(fgLabel(o.f))}: <b>${esc(after)}</b>`);
+  });
+  (parsed.dropOps||[]).forEach(o=>{
+    out.undo.push([o.f, vxPut(o.f, null)]); out.fields.push(o.f);
+    out.lines.push(`${esc(fgLabel(o.f))}: снять`);
+  });
+  return out;
+}
+function vxSplit(raw){
+  const m = /^(.*?)[,;]\s*((?:а\s+)?(?:что|как|зачем|почему|какой|какая|какие|чем)\s.*)$/i.exec(raw);
+  return m && m[1].trim() ? {cmd:m[1].trim(), q:m[2].trim()} : null;
+}
+function vxExplainName(q){
+  let names = [];
+  try{ names = guessFieldForExplain(q, true); if(!names.length) names = guessFieldForExplain(q); }catch(e){}
+  names = (names||[]).filter(f=>FIELD_DEFS[f]);
+  return names.find(f=>/^Наличие/.test(f)) || names[0] || null;
+}
+const VX_YESNO = [
+  {re:/обеспечени/i, f:'Наличие обеспечения заявки', l:'Только без обеспечения', v:'Нет'},
+  {re:/аванс/i, f:'Наличие аванса', l:'Только с авансом', v:'Да'},
+  {re:/опыт/i, f:'Опыт: требуется для допуска', l:'Без требований к опыту', v:'Нет'},
+];
+function vxPend(data){ const id = ++VX_SEQ; S.vxPend[id] = data; return id; }
+function vxFinish(html, acts, extra, flash){
+  S.busy = false;
+  if(flash){ S.v23Flash = [flash]; S.v23FlashAt = Date.now(); }
+  botThink(()=>{
+    sayActions(html, acts, extra||{});
+    S.vxLift = true;
+    render();
+    if(typeof window.vxAfterReply==='function') window.vxAfterReply(S.chat[S.chat.length-1]);
+  }, 300);
+}
+function vxUndoAct(id){ return {l:'Отменить', c:`vxUndo(${id})`, kind:'link'}; }
+function vxShowAct(f){ return {l:'Показать фильтр', c:`vxShow('${jsq(f)}')`, kind:'link'}; }
+window.vxShow = function(f){
+  if(!V24FP.open) v24FpOpen();
+  S.v23Flash = [f]; S.v23FlashAt = Date.now();
+  v24FpPaint();
+};
+window.vxUndo = function(id){
+  const u = S.vxUndo[id]; if(!u) return;
+  u.forEach(([f, chip])=>{ removeChipByField(f, S.panelTray); if(chip) S.panelTray.push(chip); delete S.vxAI[f]; });
+  delete S.vxUndo[id];
+  S.chat.forEach(m=>{ if(m.vxId===id) m.acts = (m.acts||[]).filter(a=>!/vxUndo/.test(a.c||'')); });
+  toast('Отменил');
+  render();
+};
+window.vxResolve = function(id, keep){
+  const p = S.vxPend[id]; if(!p || S.busy) return;
+  delete S.vxPend[id];
+  S.chat.forEach(m=>{ if(m.vxAsk===id){ m.acts = []; m.x = null; } });
+  if(keep){ say('me', esc(p.keepLabel || 'Оставить')); render(); return vxFinish(`Оставил: <b>${esc(fgLabel(p.f))}: ${esc(vxLabel(p.f, fxCurRow(p.f)))}</b>.`, [], {}, p.f); }
+  if(p.label) say('me', esc(p.label));
+  const before = vxLabel(p.f, fxCurRow(p.f));
+  const prev = vxPut(p.f, p.row);
+  const after = vxLabel(p.f, fxCurRow(p.f));
+  const u = ++VX_SEQ; S.vxUndo[u] = [[p.f, prev]];
+  render();
+  vxFinish(`Отметил в фильтрах: ${before && before!==after ? `${esc(fgLabel(p.f))}: было ${esc(before)}, стало <b>${esc(after)}</b>` : `${esc(fgLabel(p.f))}: <b>${esc(after)}</b>`}.`, [vxUndoAct(u)], {vxId:u}, p.f);
+};
+const vxHUM = window.handleUserMessage;
+window.handleUserMessage = async function(text, chips){
+  const raw = String(text||'').trim();
+  if(!V24FP.open || !raw || (chips && chips.length) || S.busy || S.v24HangNext || /^сколько/i.test(raw)) return vxHUM(text, chips);
+  let intent = ''; try{ intent = detectIntent(raw); }catch(e){}
+  if(['undo','status','count','clear','reset','search','help','confirm','decline'].includes(intent)) return vxHUM(text, chips);
+  const sp = vxSplit(raw), isQ = !sp && v23IsQuestion(raw);
+  const pct = /обеспечени/i.test(raw) && !/заяв|исполн/i.test(raw) && /(\d+(?:[.,]\d+)?)\s*%/.exec(raw);
+  const base = {};
+  const snap = f=>{ if(!(f in base)) base[f] = vxSig(fxCurRow(f)); return base[f]; };
+  Object.keys(FIELD_DEFS).forEach(snap);
+  S.v24Last = {text, chips}; S.v24TypeFocus = true;
+  say('me', esc(raw)); const me = S.chat[S.chat.length-1];
+  S.busy = true; S.vxLift = true; render();
+  /* «Обеспечение 5%»: подходят два фильтра, до выбора ничего не меняем */
+  if(pct){
+    const n = parseFloat(pct[1].replace(',', '.'));
+    const a = vxPend({f:'Размер обеспечения заявки', row:fxLimRow('pct', n), label:'Заявки'}), b = vxPend({f:'Размер обеспечения исполнения', row:fxLimRow('pct', n), label:'Исполнения'});
+    return vxFinish(`Какое обеспечение — ${esc(pct[1])}%?`, [{l:'Заявки', c:`vxResolve(${a})`, kind:'act'}, {l:'Исполнения', c:`vxResolve(${b})`, kind:'act'}], {vxAsk:a});
+  }
+  /* вопрос: ответ и кнопка, выбранное не меняется */
+  if(isQ){
+    const f = vxExplainName(raw), yn = f && /нужн|есть ли|требует/i.test(raw) && VX_YESNO.find(x=>x.re.test(raw));
+    if(f){
+      const acts = [vxShowAct(f)];
+      if(yn){ const id = vxPend({f:yn.f, row:{o:'Равен', v:yn.v}, label:yn.l}); acts.unshift({l:yn.l, c:`vxResolve(${id})`, kind:'act'}); }
+      return vxFinish(explainField(f), acts, {}, f);
+    }
+    S.busy = false; const k = S.chat.indexOf(me); if(k>=0) S.chat.splice(k, 1); render();
+    return vxHUM(text, chips);
+  }
+  let parsed = null;
+  try{ parsed = await parseText(sp ? sp.cmd : raw); }catch(e){}
+  const hasOps = parsed && ((parsed.ops||[]).length || (parsed.dropOps||[]).length);
+  /* одно слово — пояснение и кнопка */
+  if(!hasOps){
+    const f = vxExplainName(raw);
+    if(f) return vxFinish(explainField(f), [vxShowAct(f)], {}, f);
+    S.busy = false; const k = S.chat.indexOf(me); if(k>=0) S.chat.splice(k, 1); render();
+    return vxHUM(text, chips);
+  }
+  const res = vxApplyOps(parsed, snap), parts = [], acts = [], extra = {};
+  if(res.lines.length){
+    const id = ++VX_SEQ; S.vxUndo[id] = res.undo; extra.vxId = id;
+    parts.push(`Отметил в фильтрах: ${res.lines.join('; ')}.`);
+    acts.push(vxUndoAct(id));
+  }
+  res.kept.forEach(k=>{
+    const lab = String(valueLabel ? valueLabel(k.f, k.v) : k.v);
+    const id = vxPend({f:k.f, row:{o:k.o, v:k.v}, label:`Заменить на ${lab}`});
+    parts.push(`«${esc(fgLabel(k.f))}» вы только что изменили вручную, оставил ваш выбор.`);
+    acts.push({l:`Заменить на ${esc(lab)}`, c:`vxResolve(${id})`, kind:'act'});
+  });
+  if(res.conflict){
+    const c = res.conflict, was = vxLabel(c.f, c.cur), row = {o:c.o, v:c.v, f:c.f}, nw = vxLabel(c.f, row);
+    const id = vxPend({f:c.f, row:{o:c.o, v:c.v}, label:`Заменить на ${nw}`, keepLabel:`Оставить ${was}`});
+    parts.push(`Уже выбрано «${esc(was)}». Что оставить?`);
+    acts.push({l:`Оставить ${esc(was)}`, c:`vxResolve(${id},true)`, kind:'act'}, {l:`Заменить на ${esc(nw)}`, c:`vxResolve(${id})`, kind:'act'});
+    extra.vxAsk = id;
+  }
+  let flash = res.fields[0] || (res.conflict && res.conflict.f);
+  if(sp){
+    const f = vxExplainName(sp.q);
+    if(f){ parts.push(explainField(f)); acts.push(vxShowAct(f)); }
+  }
+  if(!parts.length){ S.busy = false; const k = S.chat.indexOf(me); if(k>=0) S.chat.splice(k, 1); render(); return vxHUM(text, chips); }
+  vxFinish(parts.join('<br><br>'), acts, extra, flash);
+};
+function vxLabels(){
+  const body = document.querySelector('#v24fpBody'); if(!body) return;
+  Object.keys(S.vxAI).forEach(f=>{
+    const e = body.querySelector(`.crslpill[data-f="${CSS.escape(f)}"]`);
+    if(!e) return;
+    if(!e.classList.contains('queued')){ delete S.vxAI[f]; return; }
+    if(!e.querySelector('.vxai')) e.insertAdjacentHTML('beforeend', '<span class="vxai">ассистент</span>');
+  });
+}
+const vxPaint = window.v24FpPaint;
+window.v24FpPaint = function(){
+  const r = vxPaint.apply(this, arguments);
+  if(V24FP.open){
+    vxLabels();
+  }
+  if(typeof window.vxPaintExtra==='function') window.vxPaintExtra();
+  return r;
+};
+</script>
+<style>
+/* Окно под панелью (выбран вариант А теста 09.11.2026): панель поднимает нижний край и открывает последний обмен чата */
+#v24fpBox{transition:transform .28s cubic-bezier(.3,.8,.3,1),opacity .2s,visibility .28s,height .2s ease}
+#chatSc{transition:none!important}
+#v24fpBody .fgfoot{display:none}
+#vxBar{position:fixed;z-index:128;display:flex;align-items:center;gap:12px;height:32px;font-size:14px;line-height:20px;color:#4D5566}
+#vxBar .r{color:#7D8BA6;font-size:14px}
+#vxBar .r:hover{color:var(--blue-d)}
+#vxBar .go{height:32px;padding:0 14px;border-radius:8px;background:var(--blue);color:#fff;font-weight:500}
+#vxBar .go:disabled{opacity:.45}
+#vxMore{position:fixed;z-index:124;height:28px;padding:0 12px;border-radius:14px;background:#fff;color:var(--blue-d);font-size:14px;font-weight:500;box-shadow:0 2px 10px rgba(27,30,43,.24)}
+</style>
+<script>
+/* Окно под панелью (вариант А). Узкая полоса становится окном на последний обмен, до 30% экрана.
+   «Применить» — в строке у поля ввода, чтобы не двигаться вместе с краем панели. */
+const VX_CAP = 0.30;
+let VX_FAKE = false, VX_BASE_H = 536;
+const vxGid = document.getElementById;
+document.getElementById = function(id){
+  if(id==='chatSc' && VX_FAKE && V24FP.open){ const b = v24GetById('v24fpBody'); if(b) return {clientWidth:b.clientWidth, clientHeight:VX_BASE_H}; }
+  return vxGid.call(document, id);
+};
+const vxLayoutFg = window.fgLayout;
+window.fgLayout = function(g){ VX_FAKE = true; try{ return vxLayoutFg(g); } finally { VX_FAKE = false; } };
+window.fgCheckLayout = function(){};
+window.addEventListener('resize', ()=>{ if(V24FP.open) v24FpPaint(); });
+document.addEventListener('mousedown', e=>{
+  if(!V24FP.open || !e.target.closest || !e.target.closest('#v24fpBox') || !S.vxLift) return;
+  S.vxLift = false; v24FpLayout(); v24FpAnchor(); vxPaintExtra();
+}, true);
+function vxLastMe(sc){ const a = [...sc.querySelectorAll(':scope > .m.me')]; return a[a.length-1] || null; }
+const vxLayout = window.v24FpLayout;
+window.v24FpLayout = function(){
+  vxLayout();
+  const box = v24GetById('v24fpBox'), sc = v24GetById('chatSc'); if(!box || !sc || !V24FP.open) return;
+  const full = parseFloat(box.style.height) || 580, top = parseFloat(box.style.top) || 12;
+  VX_BASE_H = full - 44 + 46;
+  if(!S.vxLift) return;
+  const me = vxLastMe(sc), last = sc.lastElementChild; if(!me || !last) return;
+  const need = Math.min(innerHeight * VX_CAP, last.getBoundingClientRect().bottom - me.getBoundingClientRect().top + 12);
+  const h = Math.max(300, Math.min(full, Math.round(sc.getBoundingClientRect().bottom - need - top - 4)));
+  box.style.height = h + 'px';
+  const b = v24GetById('v24fpBtn').getBoundingClientRect(), left = parseFloat(box.style.left), w = parseFloat(box.style.width);
+  box.style.setProperty('--v24dx', Math.round(b.left + b.width/2 - (left + w/2)) + 'px');
+  box.style.setProperty('--v24dy', Math.round(b.top + b.height/2 - (top + h/2)) + 'px');
+};
+const vxAnchor = window.v24FpAnchor;
+window.v24FpAnchor = function(){
+  vxAnchor();
+  const sc = v24GetById('chatSc'), box = v24GetById('v24fpBox'); S.vxOver = false;
+  if(!sc || !box || !V24FP.open || !S.vxLift) return;
+  const me = vxLastMe(sc); if(!me) return;
+  const top = parseFloat(box.style.top) + parseFloat(box.style.height) + 8, d = top - me.getBoundingClientRect().top;
+  if(d <= 1) return;
+  S.vxOver = true;
+  if(sc.scrollTop >= d){ sc.scrollTop -= d; return; }
+  const rest = d - sc.scrollTop; sc.scrollTop = 0;
+  sc.style.paddingTop = ((parseFloat(getComputedStyle(sc).paddingTop) || 0) + rest) + 'px';
+};
+window.vxReadAll = function(){
+  const sc = v24GetById('chatSc'), me = sc && vxLastMe(sc);
+  v24FpClose();
+  if(me) setTimeout(()=>me.scrollIntoView({block:'start'}), 20);
+};
+window.vxPaintExtra = function(){
+  let bar = v24GetById('vxBar'), more = v24GetById('vxMore');
+  if(!bar){ document.body.insertAdjacentHTML('beforeend', '<div id="vxBar" style="display:none"></div><button type="button" id="vxMore" style="display:none" onclick="vxReadAll()">Читать полностью</button>'); bar = v24GetById('vxBar'); more = v24GetById('vxMore'); }
+  const inp = v24GetById('freeIn'), sc = v24GetById('chatSc');
+  if(!V24FP.open || !inp || !sc){ bar.style.display = 'none'; more.style.display = 'none'; return; }
+  const n = (S.panelTray||[]).length, wrap = (inp.closest('.tabox') || inp.closest('.cmprow') || inp).getBoundingClientRect();
+  const show = !n && S.total && !S.gridOpen;
+  const html = `${n ? `<span>Выбрано: <b>${n}</b></span><button type="button" class="r" onclick="clearPanelTray()">Сбросить</button>` : ''}<button type="button" class="go" ${S.busy || (!n && !show) ? 'disabled' : ''} onclick="${show ? 'v24FpShow()' : 'applyFilterPanel()'}">${show ? `Показать ${fmt(S.total)} ${plural(S.total,'лот','лота','лотов')}` : `Применить${n ? ` · ${n}` : ''}`}</button>`;
+  if(bar.dataset.h!==html){ bar.dataset.h = html; bar.innerHTML = html; }
+  bar.style.display = 'flex';
+  bar.style.top = Math.round(wrap.top - 38) + 'px';
+  bar.style.right = Math.round(innerWidth - wrap.right) + 'px';
+  more.style.display = S.vxOver ? '' : 'none';
+  if(S.vxOver){ const r = sc.getBoundingClientRect(); more.style.top = Math.round(r.bottom - 32) + 'px'; more.style.left = Math.round(r.left + r.width/2 - 66) + 'px'; }
+};
+const vxClose = window.v24FpClose;
+window.v24FpClose = function(){ S.vxLift = false; const r = vxClose.apply(this, arguments); vxPaintExtra(); return r; };
+</script>
+<style>
+/* 10.11.2026: выгрузка лотов — меню формата у кнопки «Выгрузить» / «Скачать» */
+#v25xm{position:fixed;z-index:420;background:#fff;border-radius:12px;padding:4px;width:336px;box-shadow:0 8px 24px rgba(13,36,85,.16);animation:v23dlgin .12s ease}
+#v25xm[hidden]{display:none}
+#v25xm .h{font-size:12px;line-height:16px;color:#7D8BA6;padding:8px 12px 4px}
+#v25xm button{display:flex;align-items:flex-start;gap:10px;width:100%;padding:8px 12px;border-radius:8px;text-align:left}
+#v25xm button:hover,#v25xm button:focus-visible{background:#EDF3FF;outline:none}
+#v25xm .ic{flex:none;width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;line-height:12px;font-weight:600;color:#fff;margin-top:2px}
+#v25xm .ic.x{background:#1D7A45}
+#v25xm .ic.c{background:#7D8BA6}
+#v25xm .t{display:block;font-size:16px;line-height:24px;color:#000}
+#v25xm .d{display:block;font-size:12px;line-height:16px;color:#7D8BA6}
+</style>
+<script>
+/* =====================================================================
+   10.11.2026: выгрузка выбранных лотов в Excel (.xlsx) или CSV.
+   Кнопка «Выгрузить» в синей панели выбора (поиск, «Мои поиски»,
+   «Входящие», папка подборки — там она называется «Скачать») открывает
+   меню из двух пунктов. В файле один лист «Лоты» — по строке на лот,
+   шесть ключевых полей: номер, наименование, заказчик, сумма (число),
+   срок окончания приёма заявок (дата и время Excel), ссылка на извещение.
+   CSV — те же колонки: UTF-8 с BOM, разделитель «;», числа с
+   запятой, чтобы Excel в русской локали открыл файл без мастера импорта.
+   xlsx собирается в браузере без библиотек (zip без сжатия).
+   ===================================================================== */
+const V25_BASE = new Date(2026, 7, 10);   /* «сегодня» демо-данных, как в fakeDate */
+const V25_DAY = 86400000;
+function v25At(days, hour){ const d = new Date(V25_BASE.getTime() + days*V25_DAY); return new Date(d.getFullYear(), d.getMonth(), d.getDate(), hour||0); }
+
+/* Откуда выгружаем: имя для файла и порядок строк — как на экране */
+function v25Ctx(){
+  const safe = fn=>{ try{ return fn(); }catch(e){ return []; } };
+  if(S.v24Inbox) return {from:'Входящие', order:()=>safe(()=>v24InboxItems().map(x=>x.id))};
+  if(S.navScreen==='folders' && S.curFolder){
+    const f = findFolder(S.curFolder);
+    return {from:`Подборка «${S.curFolder}»`, order:()=>f ? f.items.map(i=>i.id) : []};
+  }
+  if(S.navScreen==='templates' && S.curTemplate){
+    const t = TEMPLATES.find(x=>x.n===S.curTemplate);
+    return {from:`Мой поиск «${S.curTemplate}»`, q:t && t.q, order:()=>t ? safe(()=>msList(t).map(p=>p.id)) : []};
+  }
+  return {from:'Поиск', q:S.query, order:()=>safe(()=>sortedResultProcs().map(p=>p.id))};
+}
+function v25Procs(ctx){
+  const set = new Set(S.checked), seen = new Set(), ids = [];
+  ctx.order().concat(S.checked).forEach(id=>{ if(set.has(id) && !seen.has(id)){ seen.add(id); ids.push(id); } });
+  return ids.map(id=>PROCS_BY_ID.get(id)).filter(Boolean);
+}
+
+/* Колонки. t: s — текст, n — число, dt — дата и время, url — ссылка */
+const V25_COLS = [
+  {h:'Номер', w:16, t:'s', get:p=>p.id},
+  {h:'Наименование', w:60, t:'s', get:p=>p.n},
+  {h:'Заказчик', w:48, t:'s', get:p=>CUST_FULL[p.cust] || p.cust},
+  {h:'Сумма, ₽', w:16, t:'n', money:true, get:p=>p.nmck==null ? '' : p.nmck},
+  {h:'Срок окончания приёма заявок', w:20, t:'dt', get:p=>p.days==null ? '' : v25At(p.days, 9)},
+  {h:'Ссылка на извещение', w:20, t:'url', get:p=>v23ProcUrl(p)},
+];
+function v25FileName(ctx, ext){
+  const base = String(ctx.q || ctx.from || 'лоты').replace(/[«»"\\/:*?<>|·]/g, '').replace(/\s+/g, ' ').trim().replace(/\s+/g, '_').slice(0, 40);
+  return `Лоты_${base || 'выгрузка'}_${new Date().toISOString().slice(0, 10)}.${ext}`;
+}
+function v25Save(blob, name){
+  const url = URL.createObjectURL(blob), a = document.createElement('a');
+  a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 2000);
+}
+
+/* ---------- CSV ---------- */
+function v25CsvCell(c, v){
+  if(v==='' || v==null) return '""';
+  if(c.t==='n') return String(v).replace('.', ',');
+  if(c.t==='d' || c.t==='dt'){
+    const p2 = x=>String(x).padStart(2, '0');
+    v = `${p2(v.getDate())}.${p2(v.getMonth()+1)}.${v.getFullYear()}` + (c.t==='dt' ? ` ${p2(v.getHours())}:${p2(v.getMinutes())}` : '');
+  }
+  return '"' + String(v).replace(/"/g, '""') + '"';
+}
+function v25Csv(ctx, ps){
+  const cols = V25_COLS;
+  const lines = [cols.map(c=>v25CsvCell({t:'s'}, c.h)).join(';')].concat(ps.map(p=>cols.map(c=>v25CsvCell(c, c.get(p))).join(';')));
+  return new Blob(['﻿' + lines.join('\r\n')], {type:'text/csv;charset=utf-8'});
+}
+
+/* ---------- XLSX ---------- */
+const V25_CRC = (()=>{ const t = new Uint32Array(256); for(let n=0; n<256; n++){ let c = n; for(let k=0; k<8; k++) c = c & 1 ? 0xEDB88320 ^ (c>>>1) : c>>>1; t[n] = c>>>0; } return t; })();
+function v25Crc(b){ let c = 0xFFFFFFFF; for(let i=0; i<b.length; i++) c = V25_CRC[(c ^ b[i]) & 255] ^ (c>>>8); return (c ^ 0xFFFFFFFF)>>>0; }
+function v25Zip(files, type){
+  const enc = new TextEncoder(), parts = [], cent = [];
+  let off = 0;
+  files.forEach(([fname, text])=>{
+    const name = enc.encode(fname), data = enc.encode(text), crc = v25Crc(data);
+    const lh = new DataView(new ArrayBuffer(30));
+    lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true);
+    lh.setUint16(12, 0x21, true); lh.setUint32(14, crc, true); lh.setUint32(18, data.length, true); lh.setUint32(22, data.length, true); lh.setUint16(26, name.length, true);
+    const ch = new DataView(new ArrayBuffer(46));
+    ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0x0800, true);
+    ch.setUint16(14, 0x21, true); ch.setUint32(16, crc, true); ch.setUint32(20, data.length, true); ch.setUint32(24, data.length, true); ch.setUint16(28, name.length, true); ch.setUint32(42, off, true);
+    parts.push(lh.buffer, name, data); cent.push(ch.buffer, name);
+    off += 30 + name.length + data.length;
+  });
+  const size = cent.reduce((s, b)=>s + b.byteLength, 0), end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true); end.setUint16(8, files.length, true); end.setUint16(10, files.length, true); end.setUint32(12, size, true); end.setUint32(16, off, true);
+  return new Blob(parts.concat(cent, [end.buffer]), {type});
+}
+function v25X(s){ return String(s).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+function v25Col(i){ let s = ''; for(i++; i>0; i = Math.floor((i-1)/26)) s = String.fromCharCode(65 + (i-1) % 26) + s; return s; }
+function v25Serial(d){ return (Date.UTC(d.getFullYear(), d.getMonth(), d.getDate(), d.getHours(), d.getMinutes()) - Date.UTC(1899, 11, 30)) / V25_DAY; }
+/* стили: 1 — шапка, 2 — сумма, 3 — дата, 4 — дата и время, 5 — ссылка */
+function v25Cell(ref, c, v, head){
+  if(head) return `<c r="${ref}" s="1" t="inlineStr"><is><t xml:space="preserve">${v25X(v)}</t></is></c>`;
+  if(v==='' || v==null) return '';
+  if(c.t==='n') return `<c r="${ref}" s="${c.money ? 2 : 0}"><v>${+v}</v></c>`;
+  if(c.t==='d' || c.t==='dt') return `<c r="${ref}" s="${c.t==='d' ? 3 : 4}"><v>${v25Serial(v)}</v></c>`;
+  if(c.t==='url') return `<c r="${ref}" s="5" t="str"><f>HYPERLINK("${v25X(v)}","Открыть")</f><v>Открыть</v></c>`;
+  return `<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${v25X(v)}</t></is></c>`;
+}
+function v25Sheet(cols, rows, opt){
+  const last = v25Col(cols.length - 1);
+  const body = rows.map((r, i)=>`<row r="${i+1}">${r.map((v, j)=>v25Cell(v25Col(j) + (i+1), cols[j], v, opt.head && i===0)).join('')}</row>`).join('');
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">`
+    + (opt.head ? '<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>' : '<sheetViews><sheetView workbookViewId="0"/></sheetViews>')
+    + `<sheetFormatPr defaultRowHeight="15"/><cols>${cols.map((c, j)=>`<col min="${j+1}" max="${j+1}" width="${c.w}" customWidth="1"/>`).join('')}</cols>`
+    + `<sheetData>${body}</sheetData>`
+    + (opt.head && rows.length > 1 ? `<autoFilter ref="A1:${last}${rows.length}"/>` : '')
+    + '</worksheet>';
+}
+function v25Xlsx(ctx, ps){
+  const cols = V25_COLS;
+  const lots = v25Sheet(cols, [cols.map(c=>c.h)].concat(ps.map(p=>cols.map(c=>c.get(p)))), {head:true});
+  const styles = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+<numFmts count="2"><numFmt numFmtId="164" formatCode="dd.mm.yyyy"/><numFmt numFmtId="165" formatCode="dd.mm.yyyy hh:mm"/></numFmts>
+<fonts count="3"><font><sz val="11"/><name val="Calibri"/><family val="2"/></font><font><b/><sz val="11"/><name val="Calibri"/><family val="2"/></font><font><u/><sz val="11"/><color rgb="FF0045D9"/><name val="Calibri"/><family val="2"/></font></fonts>
+<fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFEDF3FF"/><bgColor indexed="64"/></patternFill></fill></fills>
+<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>
+<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+<cellXfs count="6">
+<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
+<xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf>
+<xf numFmtId="4" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>
+<xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>
+<xf numFmtId="165" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>
+<xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/>
+</cellXfs>
+<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
+</styleSheet>`;
+  const files = [
+    ['[Content_Types].xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`],
+    ['_rels/.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`],
+    ['xl/workbook.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Лоты" sheetId="1" r:id="rId1"/></sheets>`
+      + (ps.length ? `<definedNames><definedName name="_xlnm._FilterDatabase" localSheetId="0" hidden="1">'Лоты'!$A$1:$${v25Col(cols.length - 1)}$${ps.length + 1}</definedName></definedNames>` : '') + '</workbook>'],
+    ['xl/_rels/workbook.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`],
+    ['xl/styles.xml', styles],
+    ['xl/worksheets/sheet1.xml', lots],
+  ];
+  return v25Zip(files, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+}
+
+/* ---------- меню у кнопки ---------- */
+window.v25ExportRun = function(kind){
+  v25MenuClose();
+  const ctx = v25Ctx(), ps = v25Procs(ctx);
+  if(!ps.length) return;
+  const ext = kind==='csv' ? 'csv' : 'xlsx', name = v25FileName(ctx, ext);
+  v25Save(kind==='csv' ? v25Csv(ctx, ps) : v25Xlsx(ctx, ps), name);
+  toast(`Скачан файл ${ext==='csv' ? 'CSV' : 'Excel'}: ${fmt(ps.length)} ${plural(ps.length, 'лот', 'лота', 'лотов')}`);
+};
+function v25MenuClose(){ const m = document.getElementById('v25xm'); if(m) m.hidden = true; }
+window.v24Export = function(){
+  const ev = window.event, btn = ev && ev.target && ev.target.closest ? ev.target.closest('button') : null;
+  const n = S.checked.length; if(!n) return;
+  let m = document.getElementById('v25xm');
+  if(m && !m.hidden && m.dataset.for===String(btn && btn.textContent)){ v25MenuClose(); return; }
+  if(!m){ m = document.createElement('div'); m.id = 'v25xm'; m.setAttribute('role', 'menu'); document.body.appendChild(m); }
+  m.dataset.for = String(btn && btn.textContent);
+  m.innerHTML = `<div class="h">Выгрузить ${fmt(n)} ${plural(n, 'лот', 'лота', 'лотов')}</div>
+    <button type="button" role="menuitem" onclick="v25ExportRun('xlsx')"><span class="ic x">XLS</span><span><span class="t">Excel (.xlsx)</span><span class="d">Таблица для работы в Excel</span></span></button>
+    <button type="button" role="menuitem" onclick="v25ExportRun('csv')"><span class="ic c">CSV</span><span><span class="t">CSV</span><span class="d">Для загрузки в другие программы и системы</span></span></button>`;
+  m.hidden = false;
+  const r = (btn || document.body).getBoundingClientRect(), w = m.offsetWidth, h = m.offsetHeight;
+  const up = r.top - h - 8 >= 8;
+  m.style.top = Math.round(up ? r.top - h - 8 : Math.min(innerHeight - h - 8, r.bottom + 8)) + 'px';
+  m.style.left = Math.round(Math.max(8, Math.min(innerWidth - w - 8, r.left))) + 'px';
+  setTimeout(()=>{ const b = m.querySelector('button'); if(b) b.focus(); }, 0);
+};
+document.addEventListener('mousedown', e=>{
+  const m = document.getElementById('v25xm'); if(!m || m.hidden) return;
+  if(m.contains(e.target) || (e.target.closest && e.target.closest('[onclick*="v24Export"]'))) return;
+  v25MenuClose();
+}, true);
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') v25MenuClose(); });
+window.addEventListener('resize', v25MenuClose);
+['wheel', 'touchmove'].forEach(t=>document.addEventListener(t, e=>{ const m = document.getElementById('v25xm'); if(m && !m.contains(e.target)) v25MenuClose(); }, {capture:true, passive:true}));
 </script>
 <script>
 /* 21.10.2026: стартовой синей страницы нет — после загрузки всех слоёв перерисовываем первый экран (иначе он остаётся в старом виде) */
