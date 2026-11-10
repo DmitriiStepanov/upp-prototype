@@ -39858,6 +39858,74 @@ document.addEventListener('keydown', e=>{ if(e.key==='Escape') v25MenuClose(); }
 window.addEventListener('resize', v25MenuClose);
 ['wheel', 'touchmove'].forEach(t=>document.addEventListener(t, e=>{ const m = document.getElementById('v25xm'); if(m && !m.contains(e.target)) v25MenuClose(); }, {capture:true, passive:true}));
 </script>
+<style>
+/* 10.11.2026: «Входящие» — итог импорта по ссылке */
+.v24note{display:flex;align-items:flex-start;gap:8px;margin:0 16px 8px;padding:8px 8px 8px 12px;border-radius:8px;background:#EDF3FF;font-size:14px;line-height:20px;color:#000}
+.v24note .tx{flex:1;padding-top:2px}
+.v24note .x{flex:none;width:24px;height:24px;border-radius:6px;color:#7D8BA6;font-size:14px}
+.v24note .x:hover{color:#000;background:rgba(13,36,85,.06)}
+</style>
+<script>
+/* =====================================================================
+   10.11.2026: импорт лотов по ссылке (JTBD получателя: понять, по каким
+   присланным лотам ещё можно подать заявку).
+   - Во «Входящие» добавляются ВСЕ найденные лоты, и активные, и
+     завершённые: получатель видит весь присланный список, завершённые
+     нужны, чтобы посмотреть цены и конкурентов.
+   - Завершённые стоят после активных (внутри группы — по дате добавления),
+     у них метка «в архиве»; «Скрыть завершённые» их прячет.
+   - После импорта над списком строка с итогом: «Добавлено N лотов, из них
+     K уже завершены» и, если есть, «M лотов не найдены» — лотов нет в базе,
+     добавлять нечего. Строка висит до ✕ или до следующей ссылки.
+   - Ссылка действует 7 дней (V24_TTL), потом экран «Ссылка устарела».
+   ===================================================================== */
+const v24ItemsBase = window.v24InboxItems;
+window.v24InboxItems = function(){
+  const all = v24ItemsBase.apply(this, arguments);
+  return all.filter(x=>v24Active(x.id)).concat(all.filter(x=>!v24Active(x.id)));
+};
+const v24AcceptBase = window.v24Accept;
+window.v24Accept = function(pl){
+  const ids = [...new Set((pl && pl.ids) || [])];
+  const found = ids.filter(id=>v24Ensure(id));
+  const r = v24AcceptBase.apply(this, arguments);
+  v24ApplyEnded();
+  S.v24Note = {n:found.length, ended:found.filter(id=>!v24Active(id)).length, miss:ids.length - found.length};
+  return r;
+};
+function v24NoteText(o){
+  const lots = n=>`${fmt(n)} ${plural(n, 'лот', 'лота', 'лотов')}`;
+  let t = !o.n ? 'Лоты по ссылке не найдены.'
+    : `Добавлено ${lots(o.n)}` + (!o.ended ? '.' : o.ended===o.n ? (o.n===1 ? ', он уже завершён.' : ', все уже завершены.') : `, из них ${fmt(o.ended)} уже ${plural(o.ended, 'завершён', 'завершены', 'завершены')}.`);
+  if(o.n && o.miss) t += ` ${lots(o.miss)} не ${plural(o.miss, 'найден', 'найдены', 'найдены')}: их нет на площадке.`;
+  else if(!o.n && o.miss) t = `${capFirst(lots(o.miss))} по ссылке не ${plural(o.miss, 'найден', 'найдены', 'найдены')}: их нет на площадке.`;
+  return t;
+}
+const v24InboxHtmlBase = window.v24InboxHtml;
+window.v24InboxHtml = function(){
+  const h = v24InboxHtmlBase.apply(this, arguments);
+  if(!S.v24Note) return h;
+  return h.replace('<div class="gsc">', `<div class="v24note" role="status"><span class="tx">${esc(v24NoteText(S.v24Note))}</span><button type="button" class="x" title="Скрыть" onclick="S.v24Note=null;render()">✕</button></div><div class="gsc">`);
+};
+const v24InboxCloseBase = window.v24InboxClose;
+window.v24InboxClose = function(){ S.v24Note = null; return v24InboxCloseBase.apply(this, arguments); };
+/* демо: ссылка на 20 лотов, через неделю часть завершилась, часть удалили */
+window.v24DemoMixed = function(){
+  S.v24DemoOpen = false; S.v24Dlg = null;
+  if(PROCS.length < 40){ try{ rankMatches('офисная мебель'); }catch(e){} }
+  const act = PROCS.filter(p=>v24Active(p.id)).slice(0, 12).map(p=>p.id);
+  const arch = PROCS.filter(p=>!v24Active(p.id)).slice(0, 5).map(p=>p.id);
+  const miss = ['B1700000000001', 'B1700000000002', 'B1700000000003'];
+  const ids = act.slice(0, 4).concat(arch.slice(0, 2), act.slice(4, 9), miss.slice(0, 2), arch.slice(2), act.slice(9), miss.slice(2));
+  v24Remember(ids);
+  v24OpenPayload({ids, qs:['офисная мебель'], exp:Date.now() + V24_TTL}, 'user');
+  render();
+};
+const v24LayerBase = window.v24LayerHtml;
+window.v24LayerHtml = function(){
+  return v24LayerBase.apply(this, arguments).replace(/(<button type="button" onclick="v24DemoLink\('expired'\)">[^<]*<\/button>)/, '$1<button type="button" onclick="v24DemoMixed()">Открыть ссылку на 20 лотов: 5 завершены, 3 удалены</button>');
+};
+</script>
 <script>
 /* 21.10.2026: стартовой синей страницы нет — после загрузки всех слоёв перерисовываем первый экран (иначе он остаётся в старом виде) */
 if(typeof _navSig!=='undefined') _navSig = null;
