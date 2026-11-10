@@ -39949,6 +39949,8 @@ li:hover>.fbwr,td:hover>.fbwr,.fbwr.on,.fbwr:focus-visible{opacity:1}
 .fbpop .r{display:flex;align-items:center;gap:12px}
 .fbpop input{flex:1;min-width:0;height:32px;border:1px solid rgba(13,36,85,.2);border-radius:8px;padding:0 10px;font:inherit;font-size:14px;outline:none}
 .fbpop input:focus{border-color:#0450F2}
+.v23ac tr.fbpr td{padding-top:0;font-weight:400}
+.v23ac tr.fbpr .fbpop{margin-top:0}
 #fbLog{position:fixed;left:12px;bottom:76px;width:420px;max-height:70vh;overflow:auto;background:#1B1E2B;color:#E6E9F1;border-radius:12px;padding:12px 14px;font-size:12px;line-height:16px;z-index:241;box-shadow:0 12px 32px rgba(0,0,0,.3)}
 #fbLog .hd{display:flex;align-items:baseline;gap:8px;margin-bottom:8px}
 #fbLog .hd b{font-size:14px;color:#fff}
@@ -40116,17 +40118,17 @@ window.viewCard = function(){
 };
 window.fbWrongOpen = function(f, el){
   const p = S.curProc; if(!p) return;
-  if(el.closest('.v23ac')){   /* окно «Все данные закупки» — не часть render() */
-    const td = el.parentElement, open = td.querySelector('.fbpop');
-    document.querySelectorAll('.v23ac .fbpop').forEach(x=>x.remove());
-    if(!open){ td.insertAdjacentHTML('beforeend', fbPop(f)); const i = td.querySelector('.fbpop input'); if(i) i.focus(); }
+  if(el.closest('.v23ac')){   /* окно «Все данные закупки» — не часть render(); блок — отдельной строкой под значением */
+    const tr = el.closest('tr'), open = tr.nextElementSibling && tr.nextElementSibling.classList.contains('fbpr');
+    document.querySelectorAll('.v23ac tr.fbpr').forEach(x=>x.remove());
+    if(!open){ tr.insertAdjacentHTML('afterend', `<tr class="fbpr"><td colspan="${tr.children.length}">${fbPop(f)}</td></tr>`); const i = tr.nextElementSibling.querySelector('input'); if(i) i.focus(); }
     return;
   }
   S.fbWrong = S.fbWrong===p.id+'|'+f ? null : p.id+'|'+f;
   render();
 };
 window.fbWrongClose = function(el){
-  if(el.closest('.v23ac')){ el.closest('.fbpop').remove(); return; }
+  if(el.closest('.v23ac')){ el.closest('tr.fbpr').remove(); return; }
   S.fbWrong = null; render();
 };
 window.fbWrongSend = function(f, given, el){
@@ -40135,7 +40137,7 @@ window.fbWrongSend = function(f, given, el){
   FB.flags[p.id+'|'+f] = {given:String(given), at:Date.now()};
   fbEv('lot_value_wrong', {lot:p.id, field:f, shown:shown==null ? null : String(shown), source:FIELD_SOURCE_TYPE[f]==='Гибрид' ? 'ЭТП и документация' : 'документация', user_value:String(given).trim()});
   toast('Спасибо, проверим значение');
-  if(el && el.closest('.v23ac')){ const td = el.closest('td'); td.querySelector('.fbpop').remove(); const b = td.querySelector('.fbwr'); if(b) b.outerHTML = '<span class="fbok">· сообщили о неточности</span>'; return; }
+  if(el && el.closest('.v23ac')){ const pr = el.closest('tr.fbpr'), b = pr.previousElementSibling.querySelector('.fbwr'); pr.remove(); if(b) b.outerHTML = '<span class="fbok">· сообщили о неточности</span>'; return; }
   S.fbWrong = null; render();
 };
 const fbAllCrit = window.openM_allcrit;
