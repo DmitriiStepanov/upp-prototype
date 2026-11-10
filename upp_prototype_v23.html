@@ -39927,18 +39927,12 @@ window.v24LayerHtml = function(){
 };
 </script>
 <style>
-/* 10.11.2026: обратная связь — «Не подходит», «Неверно?» */
-.prow.v23r .pr2 .fbno{flex:none;margin-left:auto;height:24px;padding:0 8px;border-radius:6px;font-size:12px;line-height:16px;color:#7D8BA6;background:#fff;box-shadow:inset 0 0 0 1px #E3E8F2;opacity:0;transition:opacity .12s}
-.prow.v23r:hover .pr2 .fbno,.prow.v23r .pr2 .fbno:focus-visible{opacity:1}
-.prow.v23r .pr2 .fbno:hover{color:#D92D20;box-shadow:inset 0 0 0 1px #F2B8BA}
-.prow.fbhid{display:flex;align-items:center;flex-wrap:wrap;gap:8px;background:#F4F8FF;border-radius:8px;padding:10px 16px;margin-bottom:8px;font-size:14px;line-height:20px;color:#4D5566;cursor:default}
-.prow.fbhid .t{margin-right:4px}
+/* 10.11.2026: обратная связь — «Неверно?» у значений из документации */
 .fbchip{height:28px;padding:0 12px;border-radius:14px;background:#fff;box-shadow:inset 0 0 0 1px #DDE5F2;font-size:14px;color:#000}
 .fbchip:hover{box-shadow:inset 0 0 0 1px #0450F2;color:#0045D9}
 .fblink{font-size:14px;font-weight:500;color:#0045D9}
 .fblink:hover{text-decoration:underline}
 .fblink.m{color:#7D8BA6;font-weight:400}
-.fbhidden{display:flex;justify-content:center;gap:8px;padding:4px 0 12px;font-size:14px;color:#7D8BA6}
 .fbwr{margin-left:6px;font-size:12px;line-height:16px;color:#7D8BA6;opacity:0;transition:opacity .12s}
 li:hover>.fbwr,td:hover>.fbwr,.fbwr.on,.fbwr:focus-visible{opacity:1}
 .fbwr:hover{color:#0045D9;text-decoration:underline}
@@ -39966,125 +39960,24 @@ li:hover>.fbwr,td:hover>.fbwr,.fbwr.on,.fbwr:focus-visible{opacity:1}
 </style>
 <script>
 /* =====================================================================
-   10.11.2026: сбор обратной связи — урезанный вариант v18.
-   Для чего: (1) качество выдачи лотов, (2) точность значений фильтров —
-   у лота (извлечение из документации) и в запросе (как ассистент понял
-   пользователя). Поведенческие метрики — в Яндекс.Метрике, здесь их нет.
-   «Нашли, что искали?» и «Этот заказчик» из v18 не переносим.
-   1. «Не подходит» — на строке лота в выдаче и в «Моих поисках» (при
-      наведении) и в карточке. Лот сворачивается на месте: «Лот скрыт.
-      Почему?» + 4 причины по желанию + «Вернуть». Скрытый лот больше не
-      показывается в списках поиска этого пользователя (не в подборках и
-      не во «Входящих» — их человек собрал сам) и не входит в счётчики.
-      Под списком — «Скрытые лоты: N · Показать».
-      Событие lot_not_fit: лот, запрос, позиция, активные фильтры, причина.
-   2. «Неверно?» — у значений из документации (карточка и «Все данные
-      закупки»): варианты значения поля, «В документации этого нет»,
-      своё значение. Событие lot_value_wrong.
-   3. Без интерфейса: пользователь снял или изменил фильтр, который
-      поставил ассистент (из запроса или реплики в чате). Событие
-      ai_filter_corrected.
+   10.11.2026: сбор обратной связи — только «Неверно?».
+   Для чего: точность значений, которые модель извлекла из документации.
+   Поведенческие метрики — в Яндекс.Метрике. Из v18 и первого варианта
+   (10.11) не переносим «Не подходит» на лоте, учёт поправок фильтров
+   ассистента, «Нашли, что искали?», «Этот заказчик» (решение 10.11.2026).
+   «Неверно?» — у значений из документации (карточка, блок «Критерии из
+   документации», и окно «Все данные закупки»): варианты значения поля,
+   «В документации этого нет», своё значение. Событие lot_value_wrong.
    Журнал событий для команды — «Демо-состояния» → «Журнал обратной связи».
    ===================================================================== */
 const FB_LS = 'upp_fb';
 const FB = (()=>{ let o = {}; try{ o = JSON.parse(localStorage.getItem(FB_LS)) || {}; }catch(e){}
-  return Object.assign({hid:{}, flags:{}, ev:[]}, o); })();
+  return {flags:o.flags || {}, ev:(o.ev || []).filter(e=>e.type==='lot_value_wrong')}; })();
 function fbSave(){ try{ localStorage.setItem(FB_LS, JSON.stringify(FB)); }catch(e){} }
 function fbEv(type, data){ const e = Object.assign({type, at:Date.now()}, data); FB.ev.push(e); if(FB.ev.length > 300) FB.ev.shift(); fbSave(); return e; }
-function fbRules(rules){ return (rules||[]).filter(r=>r && r.f && r.v!=null).map(r=>({f:r.f, o:r.o, v:r.v})); }
-function fbScope(){
-  if(S.navScreen==='templates' && S.curTemplate){ const t = TEMPLATES.find(x=>x.n===S.curTemplate); return {search:`Мой поиск «${S.curTemplate}»`, q:t && t.q, rules:t ? t.rules : []}; }
-  return {search:'Поиск', q:S.query, rules:S.filters};
-}
-const FB_KEEP = new Set();   /* скрытые на этом экране — остаются свёрнутыми на месте до перезагрузки */
-S.fbShowHidden = false;
+fbSave();
 
-/* ---------- 1. «Не подходит» ---------- */
-const FB_WHY = ['Не тот предмет', 'Не мой регион', 'Не та сумма', 'Не подходят условия'];
-const fbRecompute = window.recomputeWorkingSet;
-window.recomputeWorkingSet = function(){
-  fbRecompute.apply(this, arguments);
-  S.fbBase = S.workingSet || [];
-  S.workingSet = S.fbBase.filter(id=>!FB.hid[id]);
-  S.total = currentTotal();
-};
-const fbSorted = window.sortedResultProcs;
-window.sortedResultProcs = function(){
-  const base = S.fbBase || S.workingSet || [], vis = new Set(S.workingSet || []);
-  const back = base.filter(id=>FB.hid[id] && (S.fbShowHidden || FB_KEEP.has(id)) && !vis.has(id));
-  if(!back.length) return fbSorted.apply(this, arguments);
-  /* в исходном порядке — свёрнутый лот остаётся на своём месте */
-  const keep = S.workingSet, add = new Set(back); S.workingSet = base.filter(id=>vis.has(id) || add.has(id));
-  try{ return fbSorted.apply(this, arguments); } finally { S.workingSet = keep; }
-};
-const fbMsList = window.msList;
-window.msList = function(t){
-  const all = fbMsList.apply(this, arguments);
-  return all.filter(p=>!FB.hid[p.id] || S.fbShowHidden || FB_KEEP.has(p.id));
-};
-window.v23SelectAllAvail = function(){ S.checked = sortedResultProcs().filter(p=>!FB.hid[p.id]).map(p=>p.id); render(); };
-function fbHiddenIn(){
-  if(S.navScreen==='templates' && S.curTemplate){
-    const t = TEMPLATES.find(x=>x.n===S.curTemplate); if(!t) return 0;
-    const ids = (S.msTab||'new')==='new' ? t.newIds : t.allIds;
-    return (ids||[]).filter(id=>FB.hid[id]).length;
-  }
-  return (S.fbBase||[]).filter(id=>FB.hid[id]).length;
-}
-function fbListCtx(){ return !S.v24Inbox && !(S.navScreen==='folders'); }
-const fbProw = window.prow;
-window.prow = function(p0, ctx){
-  if(ctx || !p0 || !fbListCtx()) return fbProw.apply(this, arguments);
-  const h = FB.hid[p0.id];
-  if(h){
-    const why = h.reason
-      ? `<span class="t">Лот скрыт · ${esc(h.reason.toLowerCase())}</span>`
-      : `<span class="t">Лот скрыт. Почему?</span>${FB_WHY.map(r=>`<button type="button" class="fbchip" onclick="event.stopPropagation();fbWhy('${p0.id}','${r}')">${r}</button>`).join('')}`;
-    return `<div class="prow fbhid" data-id="${p0.id}" onclick="event.stopPropagation()">${why}<button type="button" class="fblink" onclick="event.stopPropagation();fbUnhide('${p0.id}')">Вернуть</button></div>`;
-  }
-  const html = fbProw.apply(this, arguments);
-  return html.replace(/(<div class="pr2">[\s\S]*?)(<\/div>)/, `$1<button type="button" class="fbno" title="Скрыть лот из списка" onclick="event.stopPropagation();fbHide('${p0.id}')">Не подходит</button>$2`);
-};
-window.fbHide = function(id){
-  const sc = fbScope(), list = S.navScreen==='templates' ? [] : sortedResultProcs();
-  const pos = list.findIndex(p=>p.id===id);
-  FB.hid[id] = {at:Date.now(), reason:null};
-  fbEv('lot_not_fit', {lot:id, search:sc.search, q:sc.q||'', pos:pos>=0 ? pos+1 : null, filters:fbRules(sc.rules), reason:null});
-  FB_KEEP.add(id);
-  S.checked = S.checked.filter(x=>x!==id);
-  if(S.curProc && S.curProc.id===id){ S.cardOpen = false; S.curProc = null; S.cardAnimId = null; }
-  if(S.query) recomputeWorkingSet();
-  fbSave(); render();
-};
-window.fbWhy = function(id, r){
-  if(!FB.hid[id]) return;
-  FB.hid[id].reason = r;
-  const e = [...FB.ev].reverse().find(x=>x.type==='lot_not_fit' && x.lot===id); if(e) e.reason = r;
-  fbSave(); render();
-};
-window.fbUnhide = function(id){
-  delete FB.hid[id];
-  const e = [...FB.ev].reverse().find(x=>x.type==='lot_not_fit' && x.lot===id); if(e) e.undone = true;
-  if(S.query) recomputeWorkingSet();
-  fbSave(); render();
-};
-/* счётчик в шапке списка — без скрытых; под списком — «Скрытые лоты: N» */
-function fbFooter(){
-  const n = fbHiddenIn(); if(!n) return '';
-  return `<div class="fbhidden">Скрытые лоты: ${fmt(n)} <button type="button" class="fblink" onclick="S.fbShowHidden=!S.fbShowHidden;render()">${S.fbShowHidden ? 'Не показывать' : 'Показать'}</button></div>`;
-}
-const fbGrid = window.viewGrid;
-window.viewGrid = function(){
-  let h = fbGrid.apply(this, arguments);
-  h = h.replace(/(<div class="gh1">[\s\S]*?<span class="c num">)[^<]*/, `$1${fmt(S.total||0)}`);
-  return h.replace(/(<div class="gend">[^<]*<\/div>|<button class="gmore"[^>]*>[^<]*<\/button>)/, `$1${fbFooter()}`);
-};
-['msDetail'].forEach(fn=>{
-  const old = window[fn]; if(typeof old!=='function') return;
-  window[fn] = function(){ const h = old.apply(this, arguments); return typeof h==='string' ? h.replace(/(<div class="gend">[^<]*<\/div>)/, `$1${fbFooter()}`) : h; };
-});
-
-/* ---------- 2. «Неверно?» у значений из документации ---------- */
+/* ---------- «Неверно?» ---------- */
 S.fbWrong = null;
 function fbFieldByLabel(lab){
   lab = String(lab||'').trim();
@@ -40109,8 +40002,6 @@ const fbCard = window.viewCard;
 window.viewCard = function(){
   let h = fbCard.apply(this, arguments);
   const p = S.curProc; if(!p || !h) return h;
-  /* «Не подходит» в карточке — рядом с «Отправить» */
-  if(fbListCtx()) h = h.replace(/(<button type="button" class="v24send"[\s\S]*?<\/button>)/, `$1<button type="button" class="v24send" title="Скрыть лот из списка" onclick="event.stopPropagation();fbHide('${p.id}')">Не подходит</button>`);
   return h.replace(/(<div class="dt">Критерии из документации[\s\S]*?<ul>)([\s\S]*?)(<\/ul>)/, (m, a, ul, c)=>a + ul.replace(/<li>([^:<]+):([\s\S]*?)<\/li>/g, (m2, lab, rest)=>{
     const f = fbFieldByLabel(lab); if(!fbIsDoc(f)) return m2;
     return `<li>${lab}:${rest}${fbTail(p, f)}${S.fbWrong===p.id+'|'+f ? fbPop(f) : ''}</li>`;
@@ -40135,7 +40026,7 @@ window.fbWrongSend = function(f, given, el){
   const p = S.curProc; if(!p) return;
   const shown = fbShown(p, f);
   FB.flags[p.id+'|'+f] = {given:String(given), at:Date.now()};
-  fbEv('lot_value_wrong', {lot:p.id, field:f, shown:shown==null ? null : String(shown), source:FIELD_SOURCE_TYPE[f]==='Гибрид' ? 'ЭТП и документация' : 'документация', user_value:String(given).trim()});
+  fbEv('lot_value_wrong', {lot:p.id, field:f, shown:shown==null ? null : String(shown), source:FIELD_SOURCE_TYPE[f]==='Гибрид' ? 'ЭТП и документация' : 'документация', source_doc:FIELD_DOC_NAME[f] || 'Документация о закупке.docx', user_value:String(given).trim(), place:el && el.closest('.v23ac') ? 'all_data' : 'card'});
   toast('Спасибо, проверим значение');
   if(el && el.closest('.v23ac')){ const pr = el.closest('tr.fbpr'), b = pr.previousElementSibling.querySelector('.fbwr'); pr.remove(); if(b) b.outerHTML = '<span class="fbok">· сообщили о неточности</span>'; return; }
   S.fbWrong = null; render();
@@ -40152,79 +40043,24 @@ window.openM_allcrit = function(){
   return r;
 };
 
-/* ---------- 3. поправки фильтров ассистента (без интерфейса) ---------- */
-/* Фильтр «от ассистента» — изменённый, пока шёл ответ на реплику в чате
-   (S.busy или 4 с после отправки), или пришедший из черновика панели с
-   меткой «ассистент». Если потом пользователь сам его снимает или меняет —
-   событие ai_filter_corrected. */
-const FB_AI = {};   /* поле → значение, которое поставил ассистент */
-let FB_PREV = null, FB_MSG_AT = 0, FB_QUERY = '';
-const fbSig = r=>r ? JSON.stringify([r.o, valList(r.v).map(String).sort()]) : '';
-function fbSnap(){ const o = {}; (S.filters||[]).forEach(r=>{ if(r && r.f) o[r.f] = r; }); return o; }
-const fbHUM = window.handleUserMessage;
-window.handleUserMessage = function(text, chips){
-  if(String(text||'').trim()){ FB_MSG_AT = Date.now(); if(!S.query) FB_QUERY = String(text).trim(); }
-  return fbHUM.apply(this, arguments);
-};
-const fbApply = window.applyFilterPanel;
-window.applyFilterPanel = function(){
-  S.fbAIApply = Object.keys(S.vxAI || {});
-  try{ return fbApply.apply(this, arguments); } finally { setTimeout(()=>{ S.fbAIApply = null; }, 0); }
-};
-const fbUndoVx = window.vxUndo;
-window.vxUndo = function(id){
-  const u = S.vxUndo && S.vxUndo[id];
-  if(u) u.forEach(([f])=>{ const cur = (S.panelTray||[]).find(c=>c.field===f); fbEv('ai_filter_corrected', {search:fbScope().search, q:S.query||'', field:f, ai_value:cur ? valText(cur.v) : null, new_value:null, how:'отменил ответ ассистента'}); });
-  return fbUndoVx.apply(this, arguments);
-};
-function fbTrack(){
-  const now = fbSnap();
-  if(!FB_PREV){ FB_PREV = now; return; }
-  const chat = S.busy || Date.now() - FB_MSG_AT < 4000;
-  const fields = new Set(Object.keys(now).concat(Object.keys(FB_PREV)));
-  fields.forEach(f=>{
-    const a = FB_PREV[f], b = now[f];
-    if(fbSig(a)===fbSig(b)) return;
-    const fromAI = chat || (S.fbAIApply || []).includes(f);
-    if(fromAI){ if(b) FB_AI[f] = {v:valText(b.v), o:b.o}; else delete FB_AI[f]; return; }
-    if(FB_AI[f]){
-      fbEv('ai_filter_corrected', {search:fbScope().search, q:S.query || FB_QUERY, field:f, ai_value:FB_AI[f].v, new_value:b ? valText(b.v) : null, how:b ? 'изменил' : 'снял'});
-      delete FB_AI[f];
-    }
-  });
-  FB_PREV = now;
-}
-const fbRender = window.render;
-window.render = function(){
-  const r = fbRender.apply(this, arguments);
-  try{ fbTrack(); }catch(e){}
-  if(S.fbLogOn) fbLogPaint();
-  return r;
-};
-/* новый поиск — новые фильтры ассистента */
-const fbBegin = window.beginChat;
-if(typeof fbBegin==='function') window.beginChat = function(){ Object.keys(FB_AI).forEach(k=>delete FB_AI[k]); FB_PREV = null; return fbBegin.apply(this, arguments); };
-
 /* ---------- журнал для команды ---------- */
-const FB_NAMES = {lot_not_fit:'Не подходит', lot_value_wrong:'Неверное значение', ai_filter_corrected:'Поправка фильтра ассистента'};
 function fbEvText(e){
   const t = new Date(e.at).toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'});
-  if(e.type==='lot_not_fit') return `${t} <i>${FB_NAMES[e.type]}</i> · лот ${esc(e.lot)}${e.pos ? `, позиция ${e.pos}` : ''} · ${e.reason ? esc(e.reason) : 'без причины'}${e.undone ? ' · вернул' : ''} · «${esc(e.q||'')}», фильтров: ${e.filters.length}`;
-  if(e.type==='lot_value_wrong') return `${t} <i>${FB_NAMES[e.type]}</i> · лот ${esc(e.lot)} · ${esc(fieldLabel(e.field))}: показано «${esc(e.shown==null ? 'не указано' : e.shown)}», верно «${esc(e.user_value)}»`;
-  return `${t} <i>${FB_NAMES[e.type]}</i> · «${esc(e.q||'')}» · ${esc(fieldLabel(e.field))}: ассистент «${esc(e.ai_value==null ? '—' : e.ai_value)}» → ${e.new_value==null ? esc(e.how) : `«${esc(e.new_value)}»`}`;
+  return `${t} · лот ${esc(e.lot)} · ${esc(fieldLabel(e.field))}: показано «${esc(e.shown==null ? 'не указано' : e.shown)}», верно «${esc(e.user_value)}»`;
 }
 function fbLogPaint(){
   let el = document.getElementById('fbLog');
   if(!S.fbLogOn){ if(el) el.remove(); return; }
   if(!el){ el = document.createElement('div'); el.id = 'fbLog'; document.body.appendChild(el); }
-  const c = t=>FB.ev.filter(e=>e.type===t && !e.undone).length;
   el.innerHTML = `<div class="hd"><b>Журнал обратной связи</b><span>для команды, пользователь не видит</span><button type="button" onclick="S.fbLogOn=false;fbLogPaint()">✕</button></div>
-    <table>${Object.keys(FB_NAMES).map(t=>`<tr><td>${FB_NAMES[t]} <span style="color:#7D8BA6">${t}</span></td><td>${c(t)}</td></tr>`).join('')}</table>
+    <table><tr><td>Неверное значение <span style="color:#7D8BA6">lot_value_wrong</span></td><td>${FB.ev.length}</td></tr></table>
     ${FB.ev.slice(-12).reverse().map(e=>`<div class="ev">${fbEvText(e)}</div>`).join('') || '<div class="ev">Событий пока нет</div>'}
     <div class="ft"><button type="button" onclick="fbLogJson()">Скачать JSON</button><button type="button" onclick="fbLogReset()">Очистить</button></div>`;
 }
+const fbRender = window.render;
+window.render = function(){ const r = fbRender.apply(this, arguments); if(S.fbLogOn) fbLogPaint(); return r; };
 window.fbLogJson = function(){ v25Save(new Blob([JSON.stringify(FB.ev, null, 2)], {type:'application/json'}), `feedback_${new Date().toISOString().slice(0, 10)}.json`); };
-window.fbLogReset = function(){ FB.ev = []; FB.hid = {}; FB.flags = {}; FB_KEEP.clear(); fbSave(); if(S.query) recomputeWorkingSet(); render(); };
+window.fbLogReset = function(){ FB.ev = []; FB.flags = {}; fbSave(); render(); };
 window.fbLogToggle = function(){ S.v24DemoOpen = false; S.fbLogOn = !S.fbLogOn; render(); fbLogPaint(); };
 const fbLayer = window.v24LayerHtml;
 window.v24LayerHtml = function(){
