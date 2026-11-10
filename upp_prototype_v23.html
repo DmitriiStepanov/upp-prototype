@@ -38507,7 +38507,9 @@ window.openM_allcrit = function(){
 .v24ib .gh2{align-items:center}
 .v24hide{display:inline-flex;align-items:center;gap:8px;font-size:14px;line-height:20px;color:#000;cursor:pointer}
 .v24hide input{width:16px;height:16px;accent-color:var(--blue)}
-.v24add{font-size:12px;line-height:16px;color:#7D8BA6;padding:8px 16px 0}
+.v24grp{display:flex;align-items:baseline;gap:8px;padding:16px 4px 8px;font-size:14px;line-height:20px;font-weight:500;color:#4D5566}
+.v24grp:first-child{padding-top:4px}
+.v24grp .n{font-weight:400;color:#7D8BA6}
 .v24ibe{padding:48px 24px;text-align:center;color:#7D8BA6;font-size:14px;line-height:20px}
 /* демо-меню */
 .v24demob{display:flex;align-items:center;gap:10px;color:#7D8BA6;font-size:14px;padding:8px}
@@ -39132,6 +39134,10 @@ function v24InboxItems(){
   const dir = S.v24Old ? 1 : -1;
   return V24.inbox.filter(x=>v24Ensure(x.id) && (!S.v24Hide || v24Active(x.id))).sort((a,b)=>dir*(a.at-b.at) || (a.id<b.id?-1:1));
 }
+function v24Day(at){
+  const d = new Date(at), t = d.toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'}), day = new Date(d).setHours(0,0,0,0), today = new Date().setHours(0,0,0,0);
+  return (day===today ? 'Сегодня' : day===today - 864e5 ? 'Вчера' : d.toLocaleDateString('ru-RU', {day:'numeric', month:'long'})) + ' в ' + t;
+}
 function v24When(at){ return new Date(at).toLocaleString('ru-RU', {day:'numeric', month:'long', hour:'2-digit', minute:'2-digit'}); }
 window.v24InboxAll = function(){ const ids = v24InboxItems().map(x=>x.id); S.checked = ids.length && ids.every(id=>S.checked.includes(id)) ? [] : ids; render(); };
 window.v24InboxDel = function(){
@@ -39144,7 +39150,12 @@ window.v24InboxDel = function(){
 };
 function v24InboxHtml(){
   const items = v24InboxItems(), allSel = items.length && items.every(x=>S.checked.includes(x.id));
-  const rows = items.map(x=>`<div class="v24add">Добавлено ${v24When(x.at)}</div>${prow(PROCS_BY_ID.get(x.id))}`).join('');
+  /* 10.11.2026: дата — одна на пачку (все лоты одной ссылки приходят одновременно), а не у каждого лота */
+  let rows = '';
+  items.forEach((x, i)=>{
+    if(!i || items[i-1].at!==x.at){ const n = items.filter(y=>y.at===x.at).length; rows += `<div class="v24grp"><span>${v24Day(x.at)}</span><span class="n">${fmt(n)} ${plural(n,'лот','лота','лотов')}</span></div>`; }
+    rows += prow(PROCS_BY_ID.get(x.id));
+  });
   const n = S.checked.length;
   const bulk = n ? `<div class="v23bulk" onclick="event.stopPropagation()"><div class="v23bb">
       <button type="button" class="bact" onclick="v24InboxMove()">${V23I.folder}Переместить</button>
@@ -39867,7 +39878,7 @@ window.addEventListener('resize', v25MenuClose);
    - Во «Входящие» добавляются ВСЕ найденные лоты, и активные, и
      завершённые: получатель видит весь присланный список, завершённые
      нужны, чтобы посмотреть цены и конкурентов.
-   - Завершённые стоят после активных (внутри группы — по дате добавления),
+   - Лоты сгруппированы по ссылке (одна дата на пачку); внутри пачки завершённые — после активных,
      у них метка «в архиве»; «Скрыть завершённые» их прячет.
    - После импорта над списком строка с итогом: «Добавлено N лотов, из них
      K уже завершены» и, если есть, «M лотов не найдены» — лотов нет в базе,
@@ -39876,8 +39887,14 @@ window.addEventListener('resize', v25MenuClose);
    ===================================================================== */
 const v24ItemsBase = window.v24InboxItems;
 window.v24InboxItems = function(){
-  const all = v24ItemsBase.apply(this, arguments);
-  return all.filter(x=>v24Active(x.id)).concat(all.filter(x=>!v24Active(x.id)));
+  /* внутри каждой пачки (одна ссылка — одно время) сначала активные, потом завершённые */
+  const all = v24ItemsBase.apply(this, arguments), out = [];
+  for(let i = 0; i < all.length;){
+    const g = []; const at = all[i].at;
+    while(i < all.length && all[i].at===at) g.push(all[i++]);
+    out.push(...g.filter(x=>v24Active(x.id)), ...g.filter(x=>!v24Active(x.id)));
+  }
+  return out;
 };
 const v24AcceptBase = window.v24Accept;
 window.v24Accept = function(pl){
