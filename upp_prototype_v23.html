@@ -1228,6 +1228,9 @@ body{background:var(--bg0)}
 .v23frow .fn{flex:1;min-width:0;font-size:14px;font-weight:500;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .v23frow .fc{display:flex;align-items:center;gap:6px;font-size:14px;color:var(--ink3);flex:none;min-width:54px}
 .v23frow .fd{font-size:12px;color:var(--ink4);flex:none;min-width:58px;text-align:right}
+.v23frow .fn .fdone{display:block;font-size:12px;line-height:16px;font-weight:400;color:var(--ink3)}
+.v23frow .farch{flex:none;height:32px;padding:0 12px;border-radius:8px;background:#DEE9FF;color:#1245B2;font-size:14px;font-weight:500}
+.v23frow .farch:hover{background:#CFDFFF}
 .v23finfo{font-size:12px;color:var(--ink3);background:#F4F6FB;border-radius:8px;padding:9px 12px;margin-bottom:12px;line-height:1.45}
 .v23fempty{padding:34px 8px;color:var(--ink4);font-size:14px;text-align:center}
 .v23g .gbtn.ghost{background:none;color:var(--ink3)}
@@ -2861,7 +2864,10 @@ let CHATS = [];
 let FOLDERS_ACTIVE = [];
 let FOLDERS_ARCHIVE = [];
 function findFolder(n){ return FOLDERS_ACTIVE.find(f=>f.n===n) || FOLDERS_ARCHIVE.find(f=>f.n===n); }
-function folderCount(f){ return f.items.filter(i=>!i.archived).length; }
+/* 10.11.2026 (вариант Б): лот в папке «завершён» по статусу торгов — сам, без ручной пометки.
+   Папку в архив переносит только пользователь (⋮ → «В архив» / «Вернуть из архива»). */
+function v23Ended(i){ return typeof v24Active==='function' ? !v24Active(i.id) : false; }
+function folderCount(f){ return f.items.filter(i=>!v23Ended(i)).length; }
 const TEMPLATES = [
  {n:'Коммерческие закупки', c:4, d:'Сегодня',
   rules:[
@@ -8391,7 +8397,7 @@ function openFolder(n){ S.curFolder=n; S.folderItemsTab='active'; S.checked=[]; 
 function folderBaseProcs(){
   const f = findFolder(S.curFolder);
   if(!f) return [];
-  const shown = f.items.filter(i=>S.folderItemsTab==='active' ? !i.archived : i.archived);
+  const shown = f.items.filter(i=>S.folderItemsTab==='active' ? !v23Ended(i) : v23Ended(i));
   return shown.map(i=>PROCS_BY_ID.get(i.id)).filter(Boolean);
 }
 function applyFolderFilters(arr){
@@ -8461,11 +8467,11 @@ function renderFolderCritModal(){
 }
 function viewFolderGrid(){
   const f = findFolder(S.curFolder);
-  const shown = f.items.filter(i=>S.folderItemsTab==='active' ? !i.archived : i.archived);
+  const shown = f.items.filter(i=>S.folderItemsTab==='active' ? !v23Ended(i) : v23Ended(i));
   let procs = shown.map(i=>PROCS_BY_ID.get(i.id)).filter(Boolean);
   procs = sortArr(applyFolderFilters(procs));
-  const activeN = f.items.filter(i=>!i.archived).length;
-  const archN = f.items.filter(i=>i.archived).length;
+  const activeN = f.items.filter(i=>!v23Ended(i)).length;
+  const archN = f.items.filter(v23Ended).length;
   return `<div class="gcol" style="width:auto;flex:1;border-right:1px solid var(--line)">
     <div class="gh">
       <div class="gh1">
@@ -10592,7 +10598,7 @@ window.prow = function(p0, ctx){
   const pls = v23PlacesShown(p0);
   const full = CUST_FULL[p.cust];
   const arch = /архив/i.test(p.status||'');
-  const due = arch ? `<span class="arch">${V23I.clock} в архиве</span>`
+  const due = arch ? `<span class="arch">${V23I.clock} завершён</span>`
     : p.days<1 ? `<span class="urg">${Math.max(1, Math.round(p.days*24))} ч.</span>` : `${p.days} дн.`;
   const kebab = ctx ? `<span class="ddwrap" data-dd="fk-${p.id}" style="position:relative" onclick="event.stopPropagation()">
       <button class="fkb" onclick="event.stopPropagation();toggleDD('fk-${p.id}')">⋮</button>
@@ -10715,14 +10721,16 @@ function v23SeedFav(){
   if(V23_FAV_SEEDED) return; V23_FAV_SEEDED = true;
   if(FOLDERS_ACTIVE.length || FOLDERS_ARCHIVE.length) return;
   const pick = (q, rows, n, skip)=>computeN(rows||[], q).filter(id=>!/архив/i.test((PROCS_BY_ID.get(id)||{}).status||'')).slice(skip||0, (skip||0)+n);
-  const items = (ids, arch)=>ids.map(id=>({id, archived:!!arch}));
+  const ended = (q, n)=>computeN([], q).filter(id=>/архив/i.test((PROCS_BY_ID.get(id)||{}).status||'')).slice(0, n);
+  const items = ids=>ids.map(id=>({id}));
   FOLDERS_ACTIVE.push(
     {n:'Стройматериалы · Ярославль', d:'Сегодня', items:items(pick('строительные материалы, плитка, сухие смеси, краска', [{f:'Место поставки', o:'Равен', v:'Ярославль'}], 7))},
     {n:'Важное', d:'2 мес.', items:items(pick('сухие смеси', [], 3))},
     {n:'Бетон', d:'2 мес.', items:items(pick('бетон', [], 6))},
-    {n:'Металлоконструкции', d:'3 мес.', items:items(pick('металлоконструкции', [], 4))},
+    {n:'Металлоконструкции', d:'3 мес.', items:items(pick('металлоконструкции', [], 4).concat(ended('металлоконструкции', 2)))},
+    {n:'Офисная мебель — сентябрь', d:'2 мес.', items:items(ended('офисная мебель', 5))},
   );
-  FOLDERS_ARCHIVE.push({n:'Канцтовары — 2025', d:'5 мес.', items:items(pick('канцелярские товары', [], 4), true)});
+  FOLDERS_ARCHIVE.push({n:'Канцтовары — 2025', d:'5 мес.', items:items(ended('канцелярские товары', 4))});
 }
 const v23FoldersOld = window.viewFolders;
 window.viewFolders = function(){ v23SeedFav(); return v23FoldersOld(); };
@@ -10738,7 +10746,7 @@ window.viewFoldersList = function(narrow){
       <button class="${arch?'on':''}" onclick="S.folderTab='archive';S.curFolder=null;S.cardOpen=false;render()">Архив<span>${FOLDERS_ARCHIVE.length}</span></button>
     </div>
     <div class="flist">
-      ${arch ? `<div class="v23finfo">Сюда переносятся папки, у лотов которых закончился приём заявок.</div>` : ''}
+      ${arch ? `<div class="v23finfo">Папки, которые вы убрали в архив. Вернуть — через ⋮ у папки.</div>` : ''}
       ${rows || `<div class="v23fempty">${arch ? 'В архиве пусто' : 'Пока пусто — сохраните лот из карточки или списка результатов'}</div>`}
     </div></div>`;
 };
@@ -10750,7 +10758,7 @@ window.v23FavSelectAll = function(){
 window.viewFolderGrid = function(){
   const f = findFolder(S.curFolder); if(!f) return '';
   const procs = sortArr(applyFolderFilters(folderBaseProcs()));
-  const archN = f.items.filter(i=>i.archived).length;
+  const archN = f.items.filter(v23Ended).length;
   const allSel = procs.length && procs.every(p=>S.checked.includes(p.id));
   const archTab = S.folderItemsTab==='archived';
   const nF = (S.folderFilters||[]).filter(r=>r.f).length;
@@ -10762,11 +10770,11 @@ window.viewFolderGrid = function(){
         ${sortBtn().replace('↕ ', `<span class="gi">${V23I.sort}</span>`)}
         <button class="gbtn" onclick="openFolderCritModal()"><span class="gi">${V23I.sliders}</span>Фильтры${nF ? `<span class="bdg num">${nF}</span>` : ''}</button>
         <button class="gbtn" onclick="v23FavSelectAll()">${allSel ? 'Снять выбор' : 'Выбрать все'}</button>
-        ${archN || archTab ? `<button class="gbtn ghost ${archTab?'on':''}" style="margin-left:auto" onclick="S.folderItemsTab=${archTab?"'active'":"'archived'"};S.checked=[];render()">${archTab ? '← Активные' : `В архиве ${archN}`}</button>` : ''}
+        ${archN || archTab ? `<button class="gbtn ghost ${archTab?'on':''}" style="margin-left:auto" onclick="S.folderItemsTab=${archTab?"'active'":"'archived'"};S.checked=[];render()">${archTab ? '← Активные' : `Завершённые ${archN}`}</button>` : ''}
       </div>
     </div>
-    <div class="gsc">${procs.length ? procs.map(p=>prow(p, {folder:S.curFolder, archived:archTab})).join('') + `<div class="gend">${archTab ? 'Это все лоты в архиве папки' : 'Это все лоты в папке'}</div>`
-      : `<div class="gend">${archTab ? 'В архиве папки пусто' : (S.folderFilters.length ? 'Нет лотов под эти фильтры' : 'В папке пока ничего нет')}</div>`}</div>
+    <div class="gsc">${archTab ? '<div class="v23finfo" style="margin:0 0 8px">Лоты, у которых закончился приём заявок. Они попадают сюда сами.</div>' : ''}${procs.length ? procs.map(p=>prow(p, {folder:S.curFolder, archived:archTab})).join('') + `<div class="gend">${archTab ? 'Это все завершённые лоты папки' : 'Это все лоты в папке'}</div>`
+      : `<div class="gend">${archTab ? 'Завершённых лотов нет' : (S.folderFilters.length ? 'Нет лотов под эти фильтры' : 'В папке пока ничего нет')}</div>`}</div>
     ${S.checked.length ? bulkFolder() : ''}
   </div>`;
 };
@@ -10797,7 +10805,6 @@ window.bulkFolder = function(){
     <button type="button" class="bact" onclick="v23MoveSel()">${V23I.folder}Переместить</button>
     <button type="button" class="bact" onclick="toast('Выгрузка файла')">${V23I.down}Скачать</button>
     <button type="button" class="bsq" title="Отправить коллеге" onclick="toast('Отправка коллеге')">${V23I.share}</button>
-    ${arch ? `<button type="button" class="bact" onclick="S.checked.slice().forEach(id=>restoreFromArchive(S.curFolder,id));S.checked=[];render()">↩ Вернуть</button>` : ''}
     <button type="button" class="bsq" title="Удалить из папки" onclick="S.checked.slice().forEach(id=>removeFromFolder(S.curFolder,id));S.checked=[];render()">${V23I.trash}</button>
     <span class="sp"></span><span class="bcnt">Выбрано ${fmt(S.checked.length)}</span>
     <button type="button" class="bx" title="Снять выбор" onclick="S.checked=[];render()">✕</button>
@@ -36296,13 +36303,15 @@ window.sortBtn = function(){
 window.viewFoldersList = function(narrow){
   const arch = S.folderTab==='archive', list = arch ? FOLDERS_ARCHIVE : FOLDERS_ACTIVE;
   const rows = list.map(f=>{
-    const k = 'fk:' + f.n, open = S.openDD === k;
+    const k = 'fk:' + f.n, open = S.openDD === k, done = !arch && f.items.length && !folderCount(f);
     return `<div class="v23frow ${S.curFolder===f.n?'on':''}" onclick="openFolder('${jsq(f.n)}')">
-      <span class="fic">${V23_FOLDER_PIC}</span><span class="fn" title="${esc(f.n)}">${esc(f.n)}</span>
-      <span class="fc">${V23I.markSm}${arch ? f.items.length : folderCount(f)}</span><span class="fd">${esc(f.d)}</span>
+      <span class="fic">${V23_FOLDER_PIC}</span><span class="fn" title="${esc(f.n)}">${esc(f.n)}${done ? '<span class="fdone">Все лоты завершены</span>' : ''}</span>
+      ${done ? `<button type="button" class="farch" title="Все лоты в папке завершены — убрать папку в архив" onclick="event.stopPropagation();v23FolderArch('${jsq(f.n)}',true)">В архив</button>`
+        : `<span class="fc">${V23I.markSm}${arch ? f.items.length : folderCount(f)}</span><span class="fd">${esc(f.d)}</span>`}
       <span class="fkb3 ${open?'on':''}" data-dd="${esc(k)}" title="Действия с папкой" onclick="event.stopPropagation();toggleDD('${jsq(k)}')">${V23_DOTS}
         ${open ? `<div class="fmenu" onclick="event.stopPropagation()">
           <div onclick="S.openDD=null;v23DlgOpen('folderRen','${jsq(f.n)}')">${V23_PEN}Переименовать</div>
+          <div onclick="S.openDD=null;v23FolderArch('${jsq(f.n)}',${arch ? 'false' : 'true'})">${arch ? V23_UNDO20 + 'Вернуть из архива' : V23_ARCH20 + 'В архив'}</div>
           <div class="del" onclick="S.openDD=null;v23DlgOpen('folderDel','${jsq(f.n)}')">${V23_BIN}Удалить</div></div>` : ''}</span></div>`;
   }).join('');
   return `<div class="fpage v23fav" style="${narrow ? 'width:400px;flex:none' : ''}">
@@ -36312,19 +36321,28 @@ window.viewFoldersList = function(narrow){
       <button class="${arch?'on':''}" onclick="S.folderTab='archive';S.curFolder=null;S.cardOpen=false;render()">Архив<span>${FOLDERS_ARCHIVE.length}</span></button>
     </div>
     <div class="flist">
-      ${arch ? `<div class="v23finfo">Сюда переносятся папки, у лотов которых закончился приём заявок.</div>` : ''}
+      ${arch ? `<div class="v23finfo">Папки, которые вы убрали в архив. Вернуть — через ⋮ у папки.</div>` : ''}
       ${rows || `<div class="v23fempty">${arch ? 'В архиве пусто' : 'Пока пусто. Создайте папку или сохраните лот из карточки или списка результатов.'}</div>`}
     </div></div>`;
 };
 window.createFolder = function(){ v23DlgOpen('folderNew'); };
+window.v23FolderArch = function(n, toArch){
+  const from = toArch ? FOLDERS_ACTIVE : FOLDERS_ARCHIVE, to = toArch ? FOLDERS_ARCHIVE : FOLDERS_ACTIVE;
+  const i = from.findIndex(f=>f.n===n); if(i < 0) return;
+  to.unshift(from.splice(i, 1)[0]);
+  if(S.curFolder===n){ S.curFolder = null; S.checked = []; S.cardOpen = false; S.curProc = null; }
+  S.openDD = null;
+  toast(toArch ? `Папка «${n}» в архиве` : `Папка «${n}» возвращена в активные`);
+  render();
+};
 const v23FolderGridBase = window.viewFolderGrid;
 window.viewFolderGrid = function(){
   const f = findFolder(S.curFolder); if(!f) return '';
   let h = v23FolderGridBase();
   const archTab = S.folderItemsTab==='archived';
-  const empty = !archTab && !(S.folderFilters||[]).length && !f.items.some(i=>!i.archived);
+  const empty = !archTab && !(S.folderFilters||[]).length && !f.items.some(i=>!v23Ended(i));
   if(empty){
-    h = h.replace(/<div class="gsc">[\s\S]*?<\/div>(\s*<\/div>\s*)$/, `<div class="gsc" style="display:flex"><div class="v23fempty2">${V23_EMPTY_ILL}<div class="t">Ничего нет</div><div class="d">В этой папке пока нет ни одного лота</div></div></div>$1`)
+    h = h.replace(/<div class="gsc">[\s\S]*?<\/div>(\s*<\/div>\s*)$/, `<div class="gsc" style="display:flex"><div class="v23fempty2">${V23_EMPTY_ILL}<div class="t">${f.items.length ? 'Активных лотов нет' : 'Ничего нет'}</div><div class="d">${f.items.length ? 'Все лоты в папке завершены — они в «Завершённых»' : 'В этой папке пока нет ни одного лота'}</div></div></div>$1`)
          .replace(/<div class="gh2">([\s\S]*?)<\/div>\s*<\/div>/, (m, inner)=>`<div class="gh2">${inner.replace(/<button class="gbtn"/g, '<button class="gbtn" disabled').replace(/<span class="gbtn ddwrap"([^>]*)>\s*<button type="button"/, '<span class="gbtn ddwrap"$1><button type="button" disabled')}</div></div>`);
   }
   return h;
@@ -37409,14 +37427,14 @@ const v23OpenFolderArch = window.openFolder;
 window.openFolder = function(n){
   const r = v23OpenFolderArch(n);
   const f = findFolder(n);
-  if(f && f.items.some(i=>i.archived) && (FOLDERS_ARCHIVE.includes(f) || !f.items.some(i=>!i.archived))){ S.folderItemsTab = 'archived'; render(); }
+  if(f && f.items.some(v23Ended) && !f.items.some(i=>!v23Ended(i))){ S.folderItemsTab = 'archived'; render(); }
   return r;
 };
 const v23FolderGridArch = window.viewFolderGrid;
 window.viewFolderGrid = function(){
   let h = v23FolderGridArch();
   const f = findFolder(S.curFolder);
-  if(f && S.folderItemsTab==='archived' && !f.items.some(i=>!i.archived))
+  if(f && S.folderItemsTab==='archived' && !f.items.some(i=>!v23Ended(i)))
     h = h.replace(/<button class="gbtn ghost on"[^>]*>← Активные<\/button>/, '');
   return h;
 };
@@ -37735,7 +37753,7 @@ window.renderFolderCritModal = function(){
   let h = v23FolderModalFM();
   const n = folderBaseProcs().length;
   const ddo = S.openDD && /^f[fov]\d/.test(S.openDD);
-  const what = S.folderItemsTab==='active' ? 'активные лоты' : 'лоты в архиве';
+  const what = S.folderItemsTab==='active' ? 'активные лоты' : 'завершённые лоты';
   h = h.replace('<div class="modalcard"', `<div class="modalcard v23fm ${ddo ? 'ddopen' : ''}"`)
        .replace(/<span class="mtitle">[^<]*<\/span>/, '<span class="mtitle">Фильтры</span>')
        .replace(/<button class="mx" onclick="([^"]*)">[^<]*<\/button>/, `<button class="mx" title="Закрыть" onclick="$1">${V23FM.close}</button>`)
@@ -37828,9 +37846,6 @@ window.prow = function(p0, ctx){
   const id = p0.id, k = 'fk-' + id, open = S.openDD===k, fo = esc(ctx.folder);
   const kb = `<span class="fkb3 ${open ? 'on' : ''}" data-dd="${k}" title="Действия с лотом" onclick="event.stopPropagation();toggleDD('${k}')">${V23_DOTS}
     ${open ? `<div class="fmenu" onclick="event.stopPropagation()">
-      ${ctx.archived
-        ? `<div onclick="S.openDD=null;restoreFromArchive('${fo}','${id}')">${V23_UNDO20}Вернуть из архива</div>`
-        : `<div onclick="S.openDD=null;archiveItem('${fo}','${id}')">${V23_ARCH20}В архив</div>`}
       <div class="del" onclick="S.openDD=null;removeFromFolder('${fo}','${id}')">${V23_BIN}Удалить из папки</div></div>` : ''}</span>`;
   return h.replace(/<span class="ddwrap" data-dd="fk-[^"]*"[^>]*>\s*<button class="fkb"[^>]*>⋮<\/button>[\s\S]*?<\/span>/, kb);
 };
