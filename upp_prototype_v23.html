@@ -3667,6 +3667,7 @@ function render(){
   renderNav();
   const c = document.getElementById('cont');
   if(S.navScreen==='folders'){ c.innerHTML = viewFolders(); }
+  else if(S.navScreen==='inbox'){ c.innerHTML = v24InboxScreen(); }
   else if(S.navScreen==='templates'){ c.innerHTML = viewTemplates(); }
   else if(S.screen==='start'){ c.innerHTML = viewStart(); focusQ(); }
   else if(S.screen==='onboard'){ c.innerHTML = viewOnboard(); }
@@ -38988,7 +38989,7 @@ window.v23Dual = function(p, f){
 function v24CardCtx(fn){
   const t = S.navScreen==='templates' && S.curTemplate && TEMPLATES.find(x=>x.n===S.curTemplate);
   const saved = S.filters;
-  const inbox = S.navScreen==='folders';
+  const inbox = S.navScreen==='folders' || S.navScreen==='inbox';
   if(t) S.filters = t.rules.filter(r=>r.f!=='Запрос' && FIELD_DEFS[r.f]);
   else if(inbox) S.filters = [];
   const was = V24_FMT; V24_FMT = true;
@@ -39068,12 +39069,12 @@ function v24Accept(pl){
     const it = V24.inbox.find(x=>x.id===id);
     if(it) it.at = now; else V24.inbox.push({id, at:now});
   });
-  V24.inboxOn = true;   /* папка «Входящие» появляется с первой присланной ссылкой */
+  V24.inboxOn = true;   /* пункт меню «Входящие» появляется с первой присланной ссылкой */
   v24Remember((pl.ids||[]).filter(id=>PROCS_BY_ID.has(id)));
   v24Save();
   S.v24Gate = null; S.v24Dlg = null; S.checked = [];
   if(S.screen==='landing' || S.screen==='onboard') S.screen = 'start';
-  S.navScreen = 'folders'; S.v24Inbox = true; S.curFolder = null; S.curTemplate = null; S.cardOpen = false; S.curProc = null;
+  S.navScreen = 'inbox'; S.curFolder = null; S.curTemplate = null; S.cardOpen = false; S.curProc = null;
 }
 function v24OpenPayload(pl, as){
   if(!pl || !(pl.exp > Date.now())){ S.v24Gate = {t:'expired'}; return; }
@@ -39087,7 +39088,7 @@ window.v24GateSubmit = function(){
   v24Accept(g.pl);
   render();
 };
-window.v24GateHome = function(){ S.v24Gate = null; S.navScreen = null; S.v24Inbox = false; if(S.screen==='landing' || S.screen==='onboard') S.screen = 'start'; render(); };
+window.v24GateHome = function(){ S.v24Gate = null; S.navScreen = null; if(S.screen==='landing' || S.screen==='onboard') S.screen = 'start'; render(); };
 function v24Hash(){
   const m = /^#share=([^&]+)/.exec(location.hash||''); if(!m) return false;
   const pl = v24Dec(m[1]);
@@ -39101,17 +39102,16 @@ V24.inbox.forEach(x=>v24Ensure(x.id));   /* счётчик на «Избранн
 v24Hash();
 
 const v24Go = window.go;
+/* 10.11.2026: «Входящие» — свой пункт меню и свой экран (navScreen 'inbox'), не папка «Избранного» */
 window.go = function(s){
-  if(s==='inbox'){
-    v24ApplyEnded();
-    S.v24Inbox = true; S.navScreen = 'folders'; S.folderTab = 'active'; S.curFolder = null; S.curTemplate = null; S.templateEdit = false;
-    S.cardOpen = false; S.curProc = null; S.checked = [];
-    return render();
-  }
-  S.v24Inbox = false;
+  if(s==='inbox'){ v24ApplyEnded(); S.cardOpen = false; S.curProc = null; S.checked = []; }
   return v24Go(s);
 };
+function v24InboxScreen(){
+  return `<div style="display:flex;flex-direction:row;overflow:hidden;flex:1;min-width:0">${v24InboxHtml()}${S.cardOpen && S.curProc ? viewCard() : ''}</div>`;
+}
 const V24_INBOX_NAME = 'Входящие';
+const V24_IC_INBOX = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13l2.5-7.5A2 2 0 0 1 8.4 4h7.2a2 2 0 0 1 1.9 1.5L20 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M4 13h4l1.5 2.5h5L16 13h4"/></svg>';
 function v24InboxItems(){
   v24ApplyEnded();
   const dir = S.v24Old ? 1 : -1;
@@ -39140,18 +39140,17 @@ function v24InboxHtml(){
       <button type="button" class="bx" title="Снять выбор" onclick="S.checked=[];render()">✕</button></div></div>` : '';
   return `<div class="gcol v23g v24ib" style="width:auto;flex:1">
       <div class="gh">
-        <div class="gh1"><button class="x" title="Закрыть" onclick="v24InboxClose()">✕</button><span class="t">${V24_INBOX_NAME}</span><span class="c num">${fmt(items.length)}</span></div>
+        <div class="gh1"><span class="t">${V24_INBOX_NAME}</span><span class="c num">${fmt(items.length)}</span></div>
         <div class="gh2">
           <button class="gbtn" onclick="S.v24Old=!S.v24Old;render()"><span class="gi">${V23I.sort}</span>${S.v24Old ? 'Сначала старые' : 'Сначала свежие'}</button>
           <label class="v24hide"><input type="checkbox" ${S.v24Hide?'checked':''} onchange="S.v24Hide=this.checked;S.checked=[];render()">Скрыть завершённые</label>
           <button class="gbtn" style="margin-left:auto" onclick="v24InboxAll()">${allSel ? 'Снять выбор' : 'Выбрать все'}</button>
         </div>
       </div>
-      <div class="gsc">${rows || `<div class="v24ibe">${S.v24Hide ? 'Все лоты в папке завершены.' : 'В папке пока ничего нет. Здесь появятся лоты, которые вам отправят по ссылке.'}</div>`}</div>
+      <div class="gsc">${rows || `<div class="v24ibe">${S.v24Hide ? 'Все присланные лоты завершены.' : 'Здесь появятся лоты, которые вам отправят по ссылке.'}</div>`}</div>
       ${bulk}
     </div>`;
 }
-window.v24InboxClose = function(){ S.v24Inbox = false; S.checked = []; S.cardOpen = false; S.curProc = null; render(); };
 const V24_INBOX_MOVE = '__inbox__';
 window.v24InboxMove = function(){ S.v23MoveFrom = V24_INBOX_MOVE; openSaveModal(S.checked.slice()); };
 const v24DoSaveFolder = window.doSave;
@@ -39166,35 +39165,16 @@ window.doSave = function(navigate){
   render();
 };
 const v24OpenFolder = window.openFolder;
-window.openFolder = function(){ S.v24Inbox = false; S.checked = []; return v24OpenFolder.apply(this, arguments); };
-const v24FoldersList = window.viewFoldersList;
-window.viewFoldersList = function(narrow){
-  let h = v24FoldersList(narrow);
-  if(!V24.inboxOn || S.folderTab==='archive') return h;
-  const last = V24.inbox.reduce((m, x)=>Math.max(m, x.at), 0);
-  const d = !last ? '' : new Date(last).toDateString()===new Date().toDateString() ? 'Сегодня' : new Date(last).toLocaleDateString('ru-RU', {day:'numeric', month:'long'});
-  const row = `<div class="v23frow v24ibrow ${S.v24Inbox?'on':''}" onclick="go('inbox')">
-      <span class="fic">${V23_FOLDER_PIC}</span><span class="fn" title="${V24_INBOX_NAME}">${V24_INBOX_NAME}</span>
-      <span class="fc">${V23I.markSm}${fmt(V24.inbox.length)}</span>${S.cardOpen ? '' : `<span class="fd">${d}</span>`}</div>`;
-  return h.replace('<div class="flist">', '<div class="flist">' + row);
-};
-const v24ViewFolders = window.viewFolders;
-window.viewFolders = function(){
-  if(S.v24Inbox && S.folderTab==='archive') S.v24Inbox = false;
-  if(!S.v24Inbox) return v24ViewFolders.apply(this, arguments);
-  v23SeedFav();
-  return `<div style="display:flex;flex-direction:row;overflow:hidden;flex:1;min-width:0">${viewFoldersList(true)}${v24InboxHtml()}${S.cardOpen && S.curProc ? viewCard() : ''}</div>`;
-};
+window.openFolder = function(){ S.checked = []; return v24OpenFolder.apply(this, arguments); };
 const v24RenderNav = window.renderNav;
 window.renderNav = function(){
   const r = v24RenderNav.apply(this, arguments);
   const el = v24GetById('navSc'); if(!el) return r;
   const fav = el.querySelector(`[onclick="go('folders')"]`);
-  if(fav){
+  const old = el.querySelector('.v24inav'); if(old) old.remove();
+  if(fav && V24.inboxOn){
     const n = V24.inbox.filter(x=>!V24.seen[x.id] && v24Active(x.id)).length;
-    let bd = fav.querySelector('.v24ibn');
-    if(n && !bd){ fav.insertAdjacentHTML('beforeend', '<span class="nbadge v24ibn" title="Присланные лоты, которые вы ещё не открывали"></span>'); bd = fav.querySelector('.v24ibn'); }
-    if(n) bd.textContent = '+' + n; else if(bd) bd.remove();
+    fav.insertAdjacentHTML('afterend', `<button class="nrow v24inav ${S.navScreen==='inbox'?'on':''}" title="${V24_INBOX_NAME}" onclick="go('inbox')"><span class="ic">${V24_IC_INBOX}</span><span class="tx">${V24_INBOX_NAME}</span>${n ? `<span class="nbadge" title="Присланные лоты, которые вы ещё не открывали">+${n}</span>` : ''}</button>`);
   }
   return r;
 };
@@ -39290,8 +39270,8 @@ window.v24DemoEnd = function(){
   let id = null;
   const t = S.navScreen==='templates' && S.curTemplate && TEMPLATES.find(x=>x.n===S.curTemplate);
   if(t){ const l = msList(t); id = l.length ? l[0].id : null; }
-  else if(S.v24Inbox){ const x = v24InboxItems().find(x=>v24Active(x.id)); id = x ? x.id : null; }
-  if(!id){ toast('Откройте сохранённый поиск или папку «Входящие» с активными лотами'); return render(); }
+  else if(S.navScreen==='inbox'){ const x = v24InboxItems().find(x=>v24Active(x.id)); id = x ? x.id : null; }
+  if(!id){ toast('Откройте сохранённый поиск или «Входящие» с активными лотами'); return render(); }
   V24.ended[id] = 1; v24Save(); v24ApplyEnded();
   if(t) v24Sync(t);
   toast(`Лот ${id} завершён`);
@@ -39302,7 +39282,7 @@ function v24LayerHtml(){
   const d = S.v24Dlg;
   if(d) h += `<div class="v24bg" onclick="if(event.target===this)v24CloseDlg()"><div class="v24dlg">
     <h3><span>Ссылка на ${fmt(d.n)} ${plural(d.n,'лот','лота','лотов')}</span><button type="button" title="Закрыть" onclick="v24CloseDlg()">✕</button></h3>
-    <p>Ссылка действует 7 дней, до ${new Date(d.exp).toLocaleDateString('ru-RU',{day:'numeric',month:'long'})}. Получатель сразу увидит лоты в «Избранном», в папке «Входящие».</p>
+    <p>Ссылка действует 7 дней, до ${new Date(d.exp).toLocaleDateString('ru-RU',{day:'numeric',month:'long'})}. Получатель сразу увидит лоты во «Входящих».</p>
     <div class="v24link"><input type="text" readonly value="${esc(d.link)}" onclick="this.select()"><button type="button" class="v24pri" onclick="v24CopyLink()">Копировать</button></div></div></div>`;
   if(S.v24DemoOpen) h += `<div id="v24DemoM" onclick="event.stopPropagation()">
     <div class="h">Ссылка на подборку</div>
@@ -39690,7 +39670,7 @@ function v25At(days, hour){ const d = new Date(V25_BASE.getTime() + days*V25_DAY
 /* Откуда выгружаем: имя для файла и порядок строк — как на экране */
 function v25Ctx(){
   const safe = fn=>{ try{ return fn(); }catch(e){ return []; } };
-  if(S.v24Inbox) return {from:'Входящие', order:()=>safe(()=>v24InboxItems().map(x=>x.id))};
+  if(S.navScreen==='inbox') return {from:'Входящие', order:()=>safe(()=>v24InboxItems().map(x=>x.id))};
   if(S.navScreen==='folders' && S.curFolder){
     const f = findFolder(S.curFolder);
     return {from:`Подборка «${S.curFolder}»`, order:()=>f ? f.items.map(i=>i.id) : []};
@@ -39907,8 +39887,6 @@ window.v24InboxHtml = function(){
   if(!S.v24Note) return h;
   return h.replace('<div class="gsc">', `<div class="v24note" role="status"><span class="tx">${esc(v24NoteText(S.v24Note))}</span><button type="button" class="x" title="Скрыть" onclick="S.v24Note=null;render()">✕</button></div><div class="gsc">`);
 };
-const v24InboxCloseBase = window.v24InboxClose;
-window.v24InboxClose = function(){ S.v24Note = null; return v24InboxCloseBase.apply(this, arguments); };
 /* демо: ссылка на 20 лотов, через неделю часть завершилась, часть удалили */
 window.v24DemoMixed = function(){
   S.v24DemoOpen = false; S.v24Dlg = null;
