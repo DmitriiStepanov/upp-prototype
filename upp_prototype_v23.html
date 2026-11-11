@@ -2010,6 +2010,9 @@ body.v23tuton .uptt{display:none!important}
 .fmenu > div.del{color:#D92D20}
 .fmenu svg{width:20px;height:20px;flex:none}
 </style>
+<!-- 11.11.2026: пока грузятся слои поверх прототипа, экран скрыт — иначе мелькают промежуточные версии первого экрана -->
+<style id="uppBoot">.app{visibility:hidden}</style>
+<script>document.addEventListener('DOMContentLoaded', ()=>{ const s = document.getElementById('uppBoot'); if(s) s.remove(); });</script>
 </head>
 <body>
 <div class="app">
@@ -3615,7 +3618,7 @@ function freshDialog(){
 }
 function reset(){
   S = {
-    screen:'onboard', tipOff:false,   /* 21.10.2026: синяя стартовая страница (копия главной Росэлторга) убрана — сразу приветствие сервиса */ chat:[], busy:false, animatedCount:0,
+    screen:'start', tipOff:false,   /* 11.11.2026: первый экран — поиск (09.11: отдельного лендинга нет, начать поиск можно сразу); приветствие — из меню профиля */ chat:[], busy:false, animatedCount:0,
     total:BASE_TOTAL, navCol:false,
     filters:[], workingSet:PROCS.map(p=>p.id),
     ...freshDialog(),
