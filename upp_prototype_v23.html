@@ -37644,12 +37644,12 @@ window.viewCard = function(){
   const p = S.curProc; if(!p || !h) return h;
   const pd = displayProc(p);
   /* поля «ЭТП + документация» — не здесь, а в блоке «Фильтры из документации» с меткой «на ЭТП: …» (вариант Б) */
-  const userF = S.filters.map(r=>r.f).filter((f,i,a)=>f && a.indexOf(f)===i && !DOC_CRITERIA_FIELDS.includes(f) && !V23_DUAL.includes(f) && !V23_CARD_KEY.includes(f));
-  const keyRows = V23_CARD_KEY.map(f=>v23CardRow(p, pd, f)).join('');
+  /* 11.11.2026: в карточке только выставленные фильтры. Не выбран «Тип торгов» —
+     его нет и в карточке; всё остальное — в «Все данные закупки». Нет фильтров — нет блока. */
+  const userF = S.filters.map(r=>r.f).filter((f,i,a)=>f && f!=='Запрос' && FIELD_DEFS[f] && a.indexOf(f)===i && !DOC_CRITERIA_FIELDS.includes(f) && !V23_DUAL.includes(f));
   const userRows = userF.map(f=>v23CardRow(p, pd, f)).join('');
   const sub = t=>`<div style="font-size:12px;color:var(--ink4);margin-bottom:4px">${t}</div>`;
-  /* 21.10.2026: одна таблица — основные поля, за ними фильтры пользователя */
-  const block = sub('Основные данные') + (keyRows || userRows ? `<table class="ktab">${keyRows}${userRows}</table>` : '');
+  const block = userRows ? sub('Выставленные фильтры') + `<table class="ktab">${userRows}</table>` : '';
   return h.replace(/<div style="font-size:12px;color:var\(--ink4\);margin-bottom:4px">[^<]*<\/div>\s*(<table class="ktab">[\s\S]*?<\/table>)?/, block);
 };
 </script>
@@ -39010,7 +39010,7 @@ function v24CardCtx(fn){
   const saved = S.filters;
   const inbox = S.navScreen==='folders' || S.navScreen==='inbox';
   if(t) S.filters = t.rules.filter(r=>r.f!=='Запрос' && FIELD_DEFS[r.f]);
-  else if(inbox) S.filters = [];
+  else if(inbox) S.filters = S.navScreen==='folders' ? (S.folderFilters||[]).filter(r=>r.f && FIELD_DEFS[r.f]) : [];   /* 11.11.2026: в папке — фильтры папки */
   const was = V24_FMT; V24_FMT = true;
   try{ return fn(); } finally { V24_FMT = was; S.filters = saved; }
 }
@@ -39025,12 +39025,13 @@ function v24DocList(p, pd){
   const inDoc = f=>DOC_CRITERIA_FIELDS.includes(f) || V23_DUAL.includes(f);
   const chosen = S.filters.map(r=>r.f).filter((f,i,a)=>f && a.indexOf(f)===i && inDoc(f));
   const val = f=>{ const d = v23DualOf(p, f); return d ? d.doc : critValueOnProc(f, pd); };
-  const rest = DOC_CRITERIA_FIELDS.filter(f=>!chosen.includes(f) && val(f)!=null).slice(0, Math.max(0, V24_DOC_MAX - chosen.length));
+  /* 11.11.2026: только выставленные фильтры из документации, без добора до V24_DOC_MAX */
+  if(!chosen.length) return '';
   const li = f=>{
     const d = v23DualOf(p, f), v = val(f);
     return `<li>${esc(fieldLabel(f))}: ${v!=null ? esc(String(v).replace(/\.$/, '')) : '<span class="v24na">в документации не указано</span>'}. Источник: ${docSourceCell(f)}${v23EtpMark(d)}</li>`;
   };
-  return `<div class="dt">Критерии из документации <span class="spark"></span></div><ul>${chosen.concat(rest).map(li).join('')}</ul>`;
+  return `<div class="dt">Критерии из документации <span class="spark"></span></div><ul>${chosen.map(li).join('')}</ul>`;
 }
 const v24ViewCard = window.viewCard;
 window.viewCard = function(){
@@ -40078,6 +40079,10 @@ window.v24LayerHtml = function(){
   return fbLayer.apply(this, arguments).replace(/(<div class="h">Состояния<\/div>)/, '<div class="h">Команде</div><button type="button" onclick="fbLogToggle()">Журнал обратной связи</button>$1');
 };
 </script>
+<style>
+/* 11.11.2026: фильтров из документации не выставлено — от блока остаётся только ссылка */
+.ccol .docbox:not(:has(.dt)){background:none;padding:0}
+</style>
 <script>
 /* 21.10.2026: стартовой синей страницы нет — после загрузки всех слоёв перерисовываем первый экран (иначе он остаётся в старом виде) */
 if(typeof _navSig!=='undefined') _navSig = null;
