@@ -3618,7 +3618,7 @@ function freshDialog(){
 }
 function reset(){
   S = {
-    screen:'start', tipOff:false,   /* 11.11.2026: первый экран — поиск (09.11: отдельного лендинга нет, начать поиск можно сразу); приветствие — из меню профиля */ chat:[], busy:false, animatedCount:0,
+    screen:'onboard', tipOff:false,   /* 11.11.2026: первый экран — приветствие «Добро пожаловать!», с него «Начать поиск» */ chat:[], busy:false, animatedCount:0,
     total:BASE_TOTAL, navCol:false,
     filters:[], workingSet:PROCS.map(p=>p.id),
     ...freshDialog(),
@@ -38865,8 +38865,7 @@ window.questionCandidates = function(){
   return v24QCands().filter(m=>!(early && m.field==='МСП / СОНО'));
 };
 
-/* ---------- 3. стартовый экран: поиск можно начать сразу ---------- */
-if(S.screen==='onboard') S.screen = 'start';
+/* ---------- 3. стартовый экран: короткий текст под заголовком (11.11.2026: первым снова идёт приветствие) ---------- */
 const V24_LEAD = 'Настоящий умный поиск по всем закупкам на Росэлторге. Ищите по реальной документации, а не только по формальным полям';
 const v24ViewStart = window.viewStart;
 window.viewStart = function(){ return v24ViewStart().replace('</h1>', `</h1><div class="v24lead">${V24_LEAD}</div>`); };
