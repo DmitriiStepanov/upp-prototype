@@ -40110,6 +40110,38 @@ window.viewCard = function(){
   return h.replace(/(<\/div>\s*<div class="cfoot">)/, `<button type="button" class="v26all"${m[1]}>Все данные закупки${V26_ARR}</button>$1`);
 };
 </script>
+<style>
+/* 12.11.2026: шапка карточки — копирование ссылки на лот; «Отправить» — внизу рядом с «Сохранить» */
+.v27copy{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;padding:0;border-radius:6px;background:none;color:var(--blue-d);cursor:pointer}
+.v27copy:hover{background:#EDF2FE}
+.v27send{flex:none;display:inline-flex;align-items:center;gap:8px;height:48px;padding:0 20px;border-radius:8px;background:#DEE9FF;color:#1245B2;font-size:16px;font-weight:500}
+.v27send:hover{background:#C4D8FF}
+</style>
+<script>
+/* =====================================================================
+   12.11.2026: в шапке карточки вместо «Отправить» — кнопка «скопировать
+   ссылку на лот на площадке» (та же ссылка, что у номера процедуры).
+   «Отправить» (отправка коллеге, как из панели выбора) — внизу, рядом
+   с «Сохранить».
+   ===================================================================== */
+const V27_IC_COPY = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg>';
+const v27Card = window.viewCard;
+window.viewCard = function(){
+  let h = v27Card.apply(this, arguments);
+  const p = S.curProc; if(!p || !h) return h;
+  h = h.replace(/<button type="button" class="v24send"[\s\S]*?<\/button>/, '')
+       .replace(/(<a class="regn[\s\S]*?<\/a>)/, `$1<button type="button" class="v27copy" data-tip="Скопировать ссылку на лот на площадке" aria-label="Скопировать ссылку на лот на площадке" onclick="event.stopPropagation();v27CopyLot()">${V27_IC_COPY}</button>`);
+  return h.replace(/(<div class="cfoot">[\s\S]*?<button class="bigb"[\s\S]*?<\/button>)/, `$1<button type="button" class="v27send" onclick="v24ShareLot()">${V24_IC_SEND}Отправить</button>`);
+};
+window.v27CopyLot = function(){ const p = S.curProc; if(p) v24Copy(v23ProcUrl(displayProc(p))); };
+/* отправка одного лота — тот же диалог, что у «Отправить» в панели выбора; отметки в списке не трогаем */
+window.v24ShareLot = function(){
+  const p = S.curProc; if(!p) return;
+  const was = S.checked; S.checked = [p.id];
+  try{ v24Share(); } finally { S.checked = was; }
+  render();
+};
+</script>
 <script>
 /* 21.10.2026: стартовой синей страницы нет — после загрузки всех слоёв перерисовываем первый экран (иначе он остаётся в старом виде) */
 if(typeof _navSig!=='undefined') _navSig = null;
