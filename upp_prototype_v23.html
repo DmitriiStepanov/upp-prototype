@@ -38429,7 +38429,7 @@ window.openM_allcrit = function(){
   V23P = null;
   const row = r=>`<tr${used.has(r.name) ? ' class="on"' : ''}><td>${esc(fieldLabel(r.name))}</td>
     <td class="v">${r.v!=null ? esc(String(r.v)) : '<span class="na">не указано</span>'}${r.d && v23EtpMark(r.d) ? '<br>' + v23EtpMark(r.d) : ''}</td>
-    <td class="s">${docSourceCell(r.name)}</td></tr>`;
+    <td class="s">${r.v!=null ? docSourceCell(r.name) : ''}</td></tr>`;   /* 12.11.2026: нет значения — нет источника */
   const body = `<div class="v23ac">${blocks.map(b=>`<div class="acb"><div class="acn">${esc(b.n)}</div><table><tbody>${b.rows.map(row).join('')}</tbody></table></div>`).join('')}</div>`;
   const legend = blocks.some(b=>b.rows.some(r=>used.has(r.name))) ? '<span class="v23aclg"><i></i>ваши фильтры</span>' : '';
   const html = `<div style="position:fixed;inset:0;background:rgba(27,30,43,.42);z-index:200;display:flex;align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)this.remove()">
@@ -39029,7 +39029,10 @@ function v24DocList(p, pd){
   if(!chosen.length) return '';
   const li = f=>{
     const d = v23DualOf(p, f), v = val(f);
-    return `<li>${esc(fieldLabel(f))}: ${v!=null ? esc(String(v).replace(/\.$/, '')) : '<span class="v24na">в документации не указано</span>'}. Источник: ${docSourceCell(f)}${v23EtpMark(d)}</li>`;
+    /* 12.11.2026: значение не нашли — источника нет, ссылаться не на что */
+    return v!=null
+      ? `<li>${esc(fieldLabel(f))}: ${esc(String(v).replace(/\.$/, ''))}. Источник: ${docSourceCell(f)}${v23EtpMark(d)}</li>`
+      : `<li>${esc(fieldLabel(f))}: <span class="v24na">в документации не указано</span></li>`;
   };
   return `<div class="dt">Критерии из документации <span class="spark"></span></div><ul>${chosen.map(li).join('')}</ul>`;
 }
@@ -40038,7 +40041,7 @@ window.fbWrongSend = function(f, given, el){
   const p = S.curProc; if(!p) return;
   const shown = fbShown(p, f);
   FB.flags[p.id+'|'+f] = {given:String(given), at:Date.now()};
-  fbEv('lot_value_wrong', {lot:p.id, field:f, shown:shown==null ? null : String(shown), source:FIELD_SOURCE_TYPE[f]==='Гибрид' ? 'ЭТП и документация' : 'документация', source_doc:FIELD_DOC_NAME[f] || 'Документация о закупке.docx', user_value:String(given).trim(), place:el && el.closest('.v23ac') ? 'all_data' : 'card'});
+  fbEv('lot_value_wrong', {lot:p.id, field:f, shown:shown==null ? null : String(shown), source:FIELD_SOURCE_TYPE[f]==='Гибрид' ? 'ЭТП и документация' : 'документация', source_doc:shown==null ? null : (FIELD_DOC_NAME[f] || 'Документация о закупке.docx'), user_value:String(given).trim(), place:el && el.closest('.v23ac') ? 'all_data' : 'card'});
   toast('Спасибо, проверим значение');
   if(el && el.closest('.v23ac')){ const pr = el.closest('tr.fbpr'), b = pr.previousElementSibling.querySelector('.fbwr'); pr.remove(); if(b) b.outerHTML = '<span class="fbok">· сообщили о неточности</span>'; return; }
   S.fbWrong = null; render();
