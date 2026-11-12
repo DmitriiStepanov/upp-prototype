@@ -40086,6 +40086,30 @@ window.v24LayerHtml = function(){
 /* 11.11.2026: фильтров из документации не выставлено — от блока остаётся только ссылка */
 .ccol .docbox:not(:has(.dt)){background:none;padding:0}
 </style>
+<style>
+/* 12.11.2026: ссылка на окно «Все данные закупки» */
+.v26all{display:inline-flex;align-items:center;gap:4px;margin-top:4px;padding:0;background:none;font-size:16px;line-height:24px;font-weight:500;color:var(--blue-d);cursor:pointer}
+.v26all:hover{text-decoration:underline}
+.v26all svg{flex:none}
+</style>
+<script>
+/* =====================================================================
+   12.11.2026: ссылка «Посмотреть все критерии из документации» →
+   «Все данные закупки», как называется окно, которое она открывает.
+   В окне все поля лота — с площадки и из документации, поэтому ссылка
+   стоит не внутри блока документации, а под обоими блоками, на одном
+   месте при любых фильтрах.
+   ===================================================================== */
+const V26_ARR = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>';
+const v26CardAll = window.viewCard;
+window.viewCard = function(){
+  let h = v26CardAll.apply(this, arguments);
+  if(!h || !S.curProc) return h;
+  const m = /<span class="allcrit"([^>]*)>[^<]*<\/span>/.exec(h); if(!m) return h;
+  h = h.replace(m[0], '').replace(/<div class="docbox">\s*<\/div>/, '');
+  return h.replace(/(<\/div>\s*<div class="cfoot">)/, `<button type="button" class="v26all"${m[1]}>Все данные закупки${V26_ARR}</button>$1`);
+};
+</script>
 <script>
 /* 21.10.2026: стартовой синей страницы нет — после загрузки всех слоёв перерисовываем первый экран (иначе он остаётся в старом виде) */
 if(typeof _navSig!=='undefined') _navSig = null;
