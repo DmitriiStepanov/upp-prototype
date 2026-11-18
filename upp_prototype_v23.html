@@ -37636,17 +37636,20 @@ function v23CardRow(p, pd, f){
   const d = V23_DUAL.includes(f) ? v23Dual(p, f) : null;
   const v = critValueOnProc(f, pd);
   if(!d && v==null) return '';
-  return `<tr class="${d ? 'dualrow '+d.state : ''}"><td>${esc(fieldLabel(f))}</td><td>${d ? v23DualHtml(d, false) : esc(String(v))}</td></tr>`;
+  /* 18.11.2026: поле «ЭТП + документация» — здесь значение с площадки, без подсветки;
+     расхождение отмечаем только в «Критериях из документации» («на ЭТП: …») */
+  if(d) return `<tr><td>${esc(fieldLabel(f))}</td><td>${d.etp!=null ? esc(String(d.etp)) : '<span style="color:var(--ink3)">Согласно закупочной документации</span>'}</td></tr>`;
+  return `<tr><td>${esc(fieldLabel(f))}</td><td>${esc(String(v))}</td></tr>`;
 }
 const v23CardKeyBase = window.viewCard;
 window.viewCard = function(){
   let h = v23CardKeyBase.apply(this, arguments);
   const p = S.curProc; if(!p || !h) return h;
   const pd = displayProc(p);
-  /* поля «ЭТП + документация» — не здесь, а в блоке «Фильтры из документации» с меткой «на ЭТП: …» (вариант Б) */
+  /* 18.11.2026: поля «ЭТП + документация» — и здесь (значение с площадки), и в «Критериях из документации» (там же метка «на ЭТП: …») */
   /* 11.11.2026: в карточке только выставленные фильтры. Не выбран «Тип торгов» —
      его нет и в карточке; всё остальное — в «Все данные закупки». Нет фильтров — нет блока. */
-  const userF = S.filters.map(r=>r.f).filter((f,i,a)=>f && f!=='Запрос' && FIELD_DEFS[f] && a.indexOf(f)===i && !DOC_CRITERIA_FIELDS.includes(f) && !V23_DUAL.includes(f));
+  const userF = S.filters.map(r=>r.f).filter((f,i,a)=>f && f!=='Запрос' && FIELD_DEFS[f] && a.indexOf(f)===i && (!DOC_CRITERIA_FIELDS.includes(f) || V23_DUAL.includes(f)));
   const userRows = userF.map(f=>v23CardRow(p, pd, f)).join('');
   const sub = t=>`<div style="font-size:12px;color:var(--ink4);margin-bottom:4px">${t}</div>`;
   const block = userRows ? sub('Выставленные фильтры') + `<table class="ktab">${userRows}</table>` : '';
@@ -39010,7 +39013,7 @@ function v24CardCtx(fn){
   const saved = S.filters;
   const inbox = S.navScreen==='folders' || S.navScreen==='inbox';
   if(t) S.filters = t.rules.filter(r=>r.f!=='Запрос' && FIELD_DEFS[r.f]);
-  else if(inbox) S.filters = S.navScreen==='folders' ? (S.folderFilters||[]).filter(r=>r.f && FIELD_DEFS[r.f]) : [];   /* 11.11.2026: в папке — фильтры папки */
+  else if(inbox) S.filters = (S.folderFilters||[]).filter(r=>r.f && FIELD_DEFS[r.f]);   /* 11.11.2026: в папке — фильтры папки; 18.11.2026: во «Входящих» — фильтры «Входящих» */
   const was = V24_FMT; V24_FMT = true;
   try{ return fn(); } finally { V24_FMT = was; S.filters = saved; }
 }
@@ -39031,7 +39034,7 @@ function v24DocList(p, pd){
     const d = v23DualOf(p, f), v = val(f);
     /* 12.11.2026: значение не нашли — источника нет, ссылаться не на что */
     return v!=null
-      ? `<li>${esc(fieldLabel(f))}: ${esc(String(v).replace(/\.$/, ''))}. Источник: ${docSourceCell(f)}${v23EtpMark(d)}</li>`
+      ? `<li>${esc(fieldLabel(f))}: ${esc(String(v).replace(/\.$/, ''))}. Источник: ${v23DocSrcSrc(f)}${v23EtpMark(d)}</li>`   /* 18.11.2026: источник — только файл документации; «на ЭТП: …» — если расходится */
       : `<li>${esc(fieldLabel(f))}: <span class="v24na">в документации не указано</span></li>`;
   };
   return `<div class="dt">Критерии из документации <span class="spark"></span></div><ul>${chosen.map(li).join('')}</ul>`;
@@ -39204,8 +39207,8 @@ window.renderNav = function(){
   const el = v24GetById('navSc'); if(!el) return r;
   const fav = el.querySelector(`[onclick="go('folders')"]`);
   const old = el.querySelector('.v24inav'); if(old) old.remove();
-  /* 10.11.2026: без счётчика — пункт появляется с первой ссылкой, этого достаточно */
-  if(fav && V24.inboxOn)
+  /* 10.11.2026: без счётчика. 18.11.2026: пункт в меню всегда, а не с первой присланной ссылкой */
+  if(fav)
     fav.insertAdjacentHTML('afterend', `<button class="nrow v24inav ${S.navScreen==='inbox'?'on':''}" title="${V24_INBOX_NAME}" onclick="go('inbox')"><span class="ic">${V24_IC_INBOX}</span><span class="tx">${V24_INBOX_NAME}</span></button>`);
   return r;
 };
@@ -40088,7 +40091,7 @@ window.v24LayerHtml = function(){
 </style>
 <style>
 /* 12.11.2026: ссылка на окно «Все данные закупки» */
-.v26all{display:inline-flex;align-items:center;gap:4px;margin-top:4px;padding:0;background:none;font-size:16px;line-height:24px;font-weight:500;color:var(--blue-d);cursor:pointer}
+.v26all{display:flex;width:fit-content;align-items:center;gap:4px;margin-top:4px;padding:0;background:none;font-size:16px;line-height:24px;font-weight:500;color:var(--blue-d);cursor:pointer}
 .v26all:hover{text-decoration:underline}
 .v26all svg{flex:none}
 </style>
@@ -40140,6 +40143,328 @@ window.v24ShareLot = function(){
   const was = S.checked; S.checked = [p.id];
   try{ v24Share(); } finally { S.checked = was; }
   render();
+};
+</script>
+<style>
+/* 15.11.2026: документы лота ещё обрабатываются — значения из документации загружаются, а не «не указано» */
+.v28st{display:flex;align-items:center;gap:8px;font-size:14px;line-height:20px;color:var(--ink2);margin:-4px 0 10px}
+.v28st .ldi{font-size:14px;color:var(--ink2);font-weight:500}
+.v28sk{display:inline-block;width:96px;height:12px;border-radius:6px;vertical-align:-1px;background:linear-gradient(90deg,rgba(27,30,43,.09) 25%,rgba(27,30,43,.03) 50%,rgba(27,30,43,.09) 75%);background-size:200% 100%;animation:v23sh 1.3s linear infinite}
+.v28tag{display:inline-flex;align-items:center;gap:6px;font-size:13px;line-height:18px;color:var(--ink3);font-weight:400;white-space:nowrap}
+.v28tag::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--blue);opacity:.55;animation:v28pulse 1.2s ease-in-out infinite}
+@keyframes v28pulse{50%{opacity:.15}}
+.docbox li .v28tag{margin-left:6px}
+.v23ac .v28tag{font-size:12px;line-height:16px}
+.v23ac td.s .v28tag{display:flex;margin-top:2px}
+.v28ban{display:flex;align-items:center;gap:10px;margin:0 0 16px;padding:10px 14px;border-radius:10px;background:#EDF2FE;font-size:14px;line-height:20px;color:var(--ink2)}
+.v28ban .ldi{font-size:14px;color:#1245B2;font-weight:500}
+.docbox ul.v28in > li{animation:v28in 1.2s ease-out;border-radius:6px}
+.v23ac tr.v28in td{animation:v28in 1.2s ease-out}
+@keyframes v28in{from{background:#FFF1B8}}
+</style>
+<script>
+/* =====================================================================
+   15.11.2026: документы лота ещё обрабатываются.
+   Свежий лот уже есть на площадке, но модель ещё не прочитала его
+   документацию — значений из неё пока нет. Это не «в документации не
+   указано»: значение появится, когда обработка закончится.
+   · Карточка, блок «Критерии из документации»: строка «Обрабатываем
+     документы закупки», у каждого выставленного фильтра вместо значения —
+     мерцающая полоса. У полей с двумя источниками (V23_DUAL) показываем
+     значение с площадки и метку «сверяем с документацией».
+   · Окно «Все данные закупки»: плашка сверху; у полей из документации —
+     полоса вместо значения и «обрабатывается» вместо источника; у полей
+     с двумя источниками — значение с площадки, источник «ЭТП Росэлторг»
+     и «сверяем с документацией». «Неверно?» нет — сообщать не о чем.
+   · Когда обработка закончилась, значения подставляются сами (карточка
+     и открытое окно), появившиеся строки коротко подсвечиваются.
+   Демо: «Демо-состояния» → «Документы лота ещё обрабатываются».
+   ===================================================================== */
+const V28_MS = 20000;
+const V28_HOLD = new Set();
+function v28Pend(p){ return !!p && (V28_HOLD.has(p.id) || v23Pending(p)); }
+function v28IsDoc(f){ return V23_SRC.doc.includes(f); }
+function v28IsDual(f){ return V23_DUAL.includes(f); }
+function v28Sk(f){ return `<span class="v28sk" style="width:${64 + hashStr(String(f)) % 64}px" aria-label="значение загружается"></span>`; }
+const V28_TAG = '<span class="v28tag">сверяем с документацией</span>';
+const V28_STATUS = '<div class="v28st" role="status"><span class="ldi">Обрабатываем документы закупки</span></div>';
+/* значение с площадки у поля с двумя источниками */
+function v28Etp(p, f){ const d = v23Dual(p, f); return d && d.etp!=null ? (V24_FMT ? v24FmtVal(f, d.etp) : d.etp) : null; }
+
+const v28Card = window.viewCard;
+window.viewCard = function(){
+  let h = v28Card.apply(this, arguments);
+  const p = S.curProc; if(!p || !h) return h;
+  if(!v28Pend(p)){   /* только что догрузили — коротко подсветить появившиеся значения */
+    if(S.v28Done===p.id){ S.v28Done = null; h = h.replace(/(<div class="dt">Критерии из документации[\s\S]*?<ul)>/, '$1 class="v28in">'); }
+    return h;
+  }
+  return v24CardCtx(()=>{
+    const chosen = S.filters.map(r=>r.f).filter((f,i,a)=>f && a.indexOf(f)===i && (v28IsDoc(f) || v28IsDual(f)));
+    if(!chosen.length) return h;
+    const li = f=>{
+      const e = v28IsDual(f) ? v28Etp(p, f) : null;
+      return e!=null
+        ? `<li>${esc(fieldLabel(f))}: ${esc(String(e).replace(/\.$/, ''))}. Источник: <span style="color:var(--ink3)">ЭТП Росэлторг</span>${V28_TAG}</li>`
+        : `<li>${esc(fieldLabel(f))}: ${v28Sk(f)}</li>`;
+    };
+    return h.replace(/(<div class="dt">Критерии из документации[\s\S]*?<\/div>)[\s\S]*?<\/ul>/, `$1${V28_STATUS}<ul>${chosen.map(li).join('')}</ul>`);
+  });
+};
+
+const v28AllCrit = window.openM_allcrit;
+window.openM_allcrit = function(){
+  const r = v28AllCrit.apply(this, arguments);
+  const p = S.curProc, box = document.querySelector('.v23ac'); if(!p || !box) return r;
+  box.closest('div[style*=fixed]').dataset.v28 = p.id;
+  if(!v28Pend(p)) return r;
+  box.insertAdjacentHTML('beforebegin', '<div class="v28ban" role="status"><span class="ldi">Обрабатываем документы закупки</span><span>Данные из документации появятся здесь автоматически.</span></div>');
+  v24CardCtx(()=>box.querySelectorAll('tr').forEach(tr=>{
+    const td = tr.children; if(td.length < 3) return;
+    const f = fbFieldByLabel(td[0].textContent);
+    if(!f || !(v28IsDoc(f) || v28IsDual(f))) return;
+    const e = v28IsDual(f) ? v28Etp(p, f) : null;
+    if(e!=null){ td[1].innerHTML = esc(String(e)); td[2].innerHTML = `<span style="color:var(--ink3)">ЭТП Росэлторг</span>${V28_TAG}`; }
+    else { td[1].innerHTML = v28Sk(f); td[2].innerHTML = '<span class="v28tag">обрабатывается</span>'; }
+  }));
+  return r;
+};
+
+/* обработка закончилась — перерисовать карточку и открытое окно */
+function v28Finish(id){
+  if(S.v28Busy) return;
+  S.v28Busy = true;
+  try{
+    V28_HOLD.delete(id);
+    const o = PROCS_BY_ID.get(id); if(o) o.docPending = false;
+    const mine = S.curProc && S.curProc.id===id;
+    const m = document.querySelector('div[data-v28="' + id + '"]');
+    const sc = m ? m.querySelector('.v23ac').parentElement.scrollTop : 0;
+    if(m) m.remove();
+    if(mine) S.v28Done = id;
+    render();
+    if(m && mine){
+      openM_allcrit();
+      const n = document.querySelector('div[data-v28="' + id + '"]');
+      if(n){
+        n.querySelector('.v23ac').parentElement.scrollTop = sc;
+        v24CardCtx(()=>n.querySelectorAll('.v23ac tr').forEach(tr=>{ const f = fbFieldByLabel(tr.children[0] && tr.children[0].textContent); if(f && (v28IsDoc(f) || v28IsDual(f))) tr.classList.add('v28in'); }));
+      }
+    }
+  } finally { S.v28Busy = false; }
+}
+/* базовая догрузка (v23MarkPending) снимает флаг у всех лотов сразу — открытое окно обновляем и тогда */
+const v28Render = window.render;
+window.render = function(){
+  const r = v28Render.apply(this, arguments);
+  const m = !S.v28Busy && document.querySelector('div[data-v28]');
+  if(m && m.querySelector('.v28ban') && S.curProc && m.dataset.v28===S.curProc.id && !v28Pend(S.curProc)) v28Finish(S.curProc.id);
+  return r;
+};
+
+/* ---------- демо ---------- */
+window.v28Demo = function(){
+  S.v24DemoOpen = false;
+  let p = S.curProc;
+  if(!p && S.gridOpen){ const l = sortedResultProcs(); p = l[0]; if(p) openCard(p.id); }
+  if(!p){ render(); toast('Откройте список лотов или карточку лота'); return; }
+  if(!S.filters.some(r=>r.f && (v28IsDoc(r.f) || v28IsDual(r.f)))) S.v28Note = true;
+  V28_HOLD.add(p.id);
+  clearTimeout(S.v28T); S.v28T = setTimeout(()=>v28Finish(p.id), V28_MS);
+  render();
+  if(S.v28Note){ S.v28Note = false; toast('Фильтров из документации не выставлено — состояние видно в «Все данные закупки»'); }
+};
+const v28Layer = window.v24LayerHtml;
+window.v24LayerHtml = function(){
+  return v28Layer.apply(this, arguments).replace(/(<div class="h">Состояния<\/div>)/, '$1<button type="button" onclick="v28Demo()">Документы лота ещё обрабатываются (20 с)</button>');
+};
+</script>
+<style>
+/* 18.11.2026: значение не определено — одна формулировка для всех полей */
+.v29na{display:inline-flex;align-items:center;gap:4px;color:var(--ink3);font-weight:400}
+.v29na[data-tt-body]{cursor:default}
+.v29na svg{flex:none;color:#7D8BA6}
+.prow.v23r .pr2 .pl.v29na{flex:none;max-width:none;overflow:visible}
+.v29na[data-tt-body]:hover svg{color:var(--blue-d)}
+</style>
+<script>
+/* =====================================================================
+   18.11.2026: значение не определено.
+   Значение поля мы могли не получить (его нет в данных лота) или не
+   распознать (фраза есть, но не нормализуется — например, место поставки
+   «поставка в Гусь Хрустальный» не нашлось в ОКТМО). Пользователю эти
+   случаи не различить, поэтому для любого поля одна формулировка —
+   «не определено» (вместо «не указано» / «в документации не указано»).
+   · Если исходная фраза есть — рядом значок, по наведению тултип
+     «Как указано в закупке» с фразой и «Кликните, чтобы скопировать».
+   · Место поставки: строка лота «Место не определено»; при фильтре
+     «Место поставки» такой лот НЕ отсеиваем — показываем (значения нет,
+     значит, не можем сказать, что лот не подходит).
+   Демо: у части лотов место поставки не определено (v29Unk), у двух
+   третей из них есть исходная фраза.
+   ===================================================================== */
+const V29_IC = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="7.6" r=".6" fill="currentColor"/></svg>';
+const V29_RAW_PLACE = [
+  'поставка товара в Гусь Хрустальный, склад заказчика',
+  'доставка силами поставщика до объекта заказчика в пгт Красное-на-Волге',
+  'по месту нахождения обособленного подразделения заказчика (Сокол)',
+  'доставка по адресам филиалов согласно Приложению № 3 к договору',
+  'с. Верхний Услон, территория бывшего совхоза, склад № 2',
+];
+/* {raw} — значение не определено (raw — исходная фраза или null); null — значение определено */
+function v29Unk(p, f){
+  if(!p || f!=='Место поставки') return null;
+  const o = PROCS_BY_ID.get(p.id) || p;
+  if(o.v29unk!==undefined) return o.v29unk;
+  const h = hashStr(String(o.id) + '|v29place') >>> 0;
+  return (o.v29unk = h % 50===0 ? {raw: h % 3 ? V29_RAW_PLACE[(h>>>4) % V29_RAW_PLACE.length] : null} : null);
+}
+function v29Na(p, f, cap){
+  const u = v29Unk(p, f), raw = u && u.raw, t = cap ? 'Не определено' : 'не определено';
+  return raw
+    ? `<span class="v29na" data-tt-title="Как указано в закупке" data-tt-body="${esc(raw)}" data-tt-copy="${esc(raw)}">${t}${V29_IC}</span>`
+    : `<span class="v29na">${t}</span>`;
+}
+/* место поставки: нет определённых мест */
+const v29Places = window.v23Places;
+window.v23Places = function(p){ return v29Unk(p, 'Место поставки') ? [] : v29Places(p); };
+/* фильтр «Место поставки»: значения нет — лот не отсеиваем */
+const v29PlacePred = REAL_FILTER_PRED['Место поставки'];
+REAL_FILTER_PRED['Место поставки'] = function(p, val, op){ return v29Unk(p, 'Место поставки') ? true : v29PlacePred(p, val, op); };
+/* строка лота */
+const v29Prow = window.prow;
+window.prow = function(p0, ctx){
+  const h = v29Prow.apply(this, arguments);
+  if(!h || !v29Unk(p0, 'Место поставки')) return h;
+  const u = v29Unk(p0, 'Место поставки');
+  const na = u.raw
+    ? `<span class="pl v29na" data-tt-title="Как указано в закупке" data-tt-body="${esc(u.raw)}" data-tt-copy="${esc(u.raw)}">Место не определено${V29_IC}</span>`
+    : '<span class="pl v29na">Место не определено</span>';
+  return h.replace(/<span class="pl"[^>]*>[^<]*<\/span>/, na);
+};
+/* карточка: «Выставленные фильтры» */
+const v29CardRow = window.v23CardRow;
+window.v23CardRow = function(p, pd, f){
+  return String(v29CardRow.apply(this, arguments) || '').replace('<span class="v24na">не указано</span>', v29Na(p, f, true));
+};
+/* карточка: «Критерии из документации» */
+const v29Card = window.viewCard;
+window.viewCard = function(){
+  const h = v29Card.apply(this, arguments);
+  const p = S.curProc; if(!p || !h) return h;
+  return h.replace(/<li>([^:<]+): <span class="v24na">в документации не указано<\/span>/g, (m, lab)=>`<li>${lab}: ${v29Na(p, fbFieldByLabel(lab), false)}`);
+};
+/* окно «Все данные закупки» */
+const v29AllCrit = window.openM_allcrit;
+window.openM_allcrit = function(){
+  const r = v29AllCrit.apply(this, arguments);
+  const p = S.curProc, box = document.querySelector('.v23ac'); if(!p || !box) return r;
+  box.querySelectorAll('span.na').forEach(sp=>{
+    const tr = sp.closest('tr'); if(!tr) return;
+    sp.outerHTML = v29Na(p, fbFieldByLabel(tr.children[0].textContent), true);
+  });
+  return r;
+};
+</script>
+<script>
+/* =====================================================================
+   18.11.2026: фильтры во «Входящих» — как в папке «Избранного».
+   Кнопка «Фильтры» в панели списка, то же окно «Фильтры» (поле —
+   условие — значение, «Сбросить», «Готово»), тот же движок предикатов.
+   Фильтры отбирают лоты внутри «Входящих» и показываются в карточке
+   лота (блоки «Выставленные фильтры» / «Критерии из документации»).
+   Пока открыты «Входящие», окно работает с S.folderFilters (как у
+   папки); фильтры «Входящих» хранятся отдельно (S.v30IbF) и
+   возвращаются при следующем заходе.
+   ===================================================================== */
+S.v30IbF = S.v30IbF || [];
+const v30Go = window.go;
+window.go = function(s){
+  const was = S.navScreen;
+  if(was==='inbox' && s!=='inbox'){ S.v30IbF = S.folderFilters || []; S.folderFilters = []; S.folderCritModalOpen = false; }
+  const r = v30Go.apply(this, arguments);
+  if(s==='inbox' && was!=='inbox'){ S.folderFilters = S.v30IbF || []; }
+  return r;
+};
+/* база для окна «Фильтры» во «Входящих» — все присланные лоты (с учётом «Скрыть завершённые») */
+const v30InboxBase = window.v24InboxItems;
+const v30FolderBase = window.folderBaseProcs;
+window.folderBaseProcs = function(){
+  if(S.navScreen!=='inbox') return v30FolderBase.apply(this, arguments);
+  return v30InboxBase().map(x=>PROCS_BY_ID.get(x.id)).filter(Boolean);
+};
+/* список «Входящих» — только лоты под фильтры */
+window.v24InboxItems = function(){
+  const items = v30InboxBase.apply(this, arguments);
+  if(S.navScreen!=='inbox' || !(S.folderFilters||[]).some(r=>r.f)) return items;
+  const ok = new Set(applyFolderFilters(items.map(x=>PROCS_BY_ID.get(x.id)).filter(Boolean)).map(p=>p.id));
+  return items.filter(x=>ok.has(x.id));
+};
+/* кнопка «Фильтры» и пустое состояние под фильтры */
+const v30InboxHtml = window.v24InboxHtml;
+window.v24InboxHtml = function(){
+  let h = v30InboxHtml.apply(this, arguments);
+  const nF = (S.folderFilters||[]).filter(r=>r.f).length;
+  const btn = `<button class="gbtn" onclick="openFolderCritModal()"><span class="gi">${V23I.sliders}</span>Фильтры${nF ? `<span class="bdg num">${nF}</span>` : ''}</button>`;
+  h = h.replace(/(<button class="gbtn" onclick="S\.v24Old=!S\.v24Old;render\(\)">[\s\S]*?<\/button>)/, `$1${btn}`);
+  if(nF && V24.inbox.length) h = h.replace(/<div class="v24ibe">[^<]*<\/div>/, '<div class="v24ibe">Нет лотов под эти фильтры.</div>');
+  return h;
+};
+/* окно «Фильтры»: подпись базы — «Входящие», а не папка */
+const v30FolderModal = window.renderFolderCritModal;
+window.renderFolderCritModal = function(){
+  const h = v30FolderModal.apply(this, arguments);
+  if(S.navScreen!=='inbox') return h;
+  return h.replace(/(<span class="mquery">)[^<]*(<\/span>)/, `$1${V24_INBOX_NAME}${S.v24Hide ? ': без завершённых' : ''}$2`);
+};
+</script>
+<style>
+/* 18.11.2026: пачку лотов во «Входящих» можно свернуть */
+.v24grp.v31f{align-items:center;cursor:pointer;user-select:none;border-radius:6px}
+.v24grp.v31f:hover{color:#000}
+.v24grp.v31f .v31c{display:inline-flex;width:16px;height:16px;align-items:center;justify-content:center;color:#7D8BA6;transition:transform .15s}
+.v24grp.v31f.off .v31c{transform:rotate(-90deg)}
+</style>
+<script>
+/* =====================================================================
+   18.11.2026: «Входящие» — пачку лотов, пришедших одной ссылкой (один
+   заголовок «Сегодня в 10:15 · 20 лотов»), можно свернуть кликом по
+   заголовку и развернуть обратно. Лоты не удаляются, число в заголовке
+   остаётся. Свёрнутые лоты не попадают в «Выбрать все».
+   ===================================================================== */
+S.v31Fold = S.v31Fold || {};
+const V31_CHEV = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
+let V31_INBOX = false;
+const v31Prow = window.prow;
+window.prow = function(p0, ctx){
+  if(V31_INBOX && p0){ const x = V24.inbox.find(y=>y.id===p0.id); if(x && S.v31Fold[x.at]) return ''; }
+  return v31Prow.apply(this, arguments);
+};
+const v31InboxHtml = window.v24InboxHtml;
+window.v24InboxHtml = function(){
+  V31_INBOX = true;
+  let h;
+  try{ h = v31InboxHtml.apply(this, arguments); } finally { V31_INBOX = false; }
+  const ats = [];
+  v24InboxItems().forEach(x=>{ if(!ats.includes(x.at)) ats.push(x.at); });
+  let k = 0;
+  return h.replace(/<div class="v24grp">/g, ()=>{
+    const at = ats[k++], off = !!S.v31Fold[at];
+    return `<div class="v24grp v31f ${off ? 'off' : ''}" role="button" title="${off ? 'Развернуть' : 'Свернуть'}" onclick="v31Toggle(${at})"><span class="v31c">${V31_CHEV}</span>`;
+  });
+};
+window.v31Toggle = function(at){
+  S.v31Fold[at] = !S.v31Fold[at];
+  if(S.v31Fold[at]){
+    const ids = new Set(V24.inbox.filter(x=>x.at===at).map(x=>x.id));
+    S.checked = S.checked.filter(id=>!ids.has(id));
+    if(S.curProc && ids.has(S.curProc.id)){ S.cardOpen = false; S.curProc = null; }
+  }
+  render();
+};
+window.v24InboxAll = function(){
+  const ids = v24InboxItems().filter(x=>!S.v31Fold[x.at]).map(x=>x.id);
+  S.checked = ids.length && ids.every(id=>S.checked.includes(id)) ? [] : ids; render();
 };
 </script>
 <script>
